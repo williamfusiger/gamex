@@ -1,0 +1,8 @@
+{
+    "name": "Gamex.Runtime",
+    "rootNamespace": "Gamex",
+    "references": [
+        "Unity.InputSystem"
+    ],
+    "autoReferenced": true
+}

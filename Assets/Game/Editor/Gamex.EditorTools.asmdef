@@ -1,0 +1,13 @@
+{
+    "name": "Gamex.EditorTools",
+    "rootNamespace": "Gamex.EditorTools",
+    "references": [
+        "Gamex.Runtime",
+        "Unity.AI.Navigation",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "name": "Gamex.Tests.PlayMode",
+    "rootNamespace": "Gamex.Tests",
+    "references": [
+        "Gamex.Runtime",
+        "UnityEngine.TestRunner"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "autoReferenced": false
+}
