@@ -21,6 +21,10 @@ namespace Gamex.EditorTools
     /// capture-summary.json that says whether any frame is black, blown out or shows error colours.
     /// These are edit-mode stills: exposure is instant, shader time is 0 and motion blur is off. What the
     /// player sees is the PlayMode test Render_ReferenceStills.
+    ///
+    /// N1: the player's torch rides on the capture camera at the hand's pose, switched on as the game starts it
+    /// (-captureFlashlight off renders without it); -captureViews a,b,c renders only those viewpoints;
+    /// -forestPreset Name captures another preset of the scene.
     /// </summary>
     public static class ForestCapture
     {
@@ -156,7 +160,7 @@ namespace Gamex.EditorTools
             public Vector3 cameraPosition, cameraEuler;
             public float fieldOfView, orthographicSize;
             public bool orthographic;
-            public string scene, preset, apv, textureCompressionOverride, unityVersion, qualityLevel, writtenUtc;
+            public string scene, preset, flashlight, apv, textureCompressionOverride, unityVersion, qualityLevel, writtenUtc;
             public int seed;
             public bool auditPassed, lodsForced;
             public string[] problems = Array.Empty<string>();
@@ -166,7 +170,7 @@ namespace Gamex.EditorTools
         sealed class Summary
         {
             public bool passed;
-            public string set, scene, preset, apv, outputFolder, textureCompressionOverride, unityVersion, writtenUtc;
+            public string set, scene, preset, flashlight, apv, outputFolder, textureCompressionOverride, unityVersion, writtenUtc;
             public int seed;
             public bool auditPassed;
             public float seconds;
@@ -198,7 +202,11 @@ namespace Gamex.EditorTools
                 Directory.CreateDirectory(outputFolder);
                 string originalPreset = ForestLighting.ActivePreset();
                 string wantedPreset = ForestArgs.Value("-forestPreset");
+                string torchMode = ForestArgs.Value("-captureFlashlight", "on");
+                if (torchMode != "on" && torchMode != "off")
+                    throw new ArgumentException($"-captureFlashlight must be on or off, not '{torchMode}'.");
                 Camera camera = null;
+                ForestFlashlight.CaptureTorch torch = null;
                 var forced = new List<LODGroup>();
                 try
                 {
@@ -212,12 +220,16 @@ namespace Gamex.EditorTools
 
                     Camera playerCamera = Camera.main;
                     camera = CreateCaptureCamera(playerCamera);
+                    torch = ForestFlashlight.HoldForCapture(playerCamera, camera, torchMode == "on");
                     List<View> views = FindViews(SceneManager.GetActiveScene(), preset, playerCamera);
+                    string viewList = ForestArgs.Value("-captureViews");
+                    if (!string.IsNullOrEmpty(viewList))
+                        views = Select(views, viewList.Split(','), new List<string>());
                     SwitchOffDebugDisplay(camera);
 
                     var summary = new Summary
                     {
-                        set = setName, scene = scenePath, preset = preset, outputFolder = Path.GetFullPath(outputFolder),
+                        set = setName, scene = scenePath, preset = preset, flashlight = torch.State, outputFolder = Path.GetFullPath(outputFolder),
                         apv = audit != null ? audit.apv : "", seed = audit != null ? audit.seed : 0, auditPassed = audit != null && audit.passed,
                         textureCompressionOverride = compression, unityVersion = Application.unityVersion, writtenUtc = UtcNow(),
                     };
@@ -237,10 +249,11 @@ namespace Gamex.EditorTools
                             sidecar.set = full ? "full" : "quick";
                             sidecar.scene = scenePath;
                             sidecar.preset = preset;
+                            sidecar.flashlight = torch.State;
                             sidecar.apv = summary.apv;
                             sidecar.seed = summary.seed;
                             sidecar.auditPassed = summary.auditPassed;
-                            sidecar.problems = Judge(view.id, sidecar.stats, sidecar.magentaPixels + sidecar.cyanPixels, isForest, preset).ToArray();
+                            sidecar.problems = Judge(view.id, sidecar.stats, sidecar.magentaPixels + sidecar.cyanPixels, isForest, preset, torch.State).ToArray();
                             File.WriteAllText(Path.Combine(outputFolder, view.id + ".json"), JsonUtility.ToJson(sidecar, true));
                             images.Add(sidecar.file);
                             foreach (string problem in sidecar.problems)
@@ -264,7 +277,8 @@ namespace Gamex.EditorTools
                     summary.seconds = (float)watch.Elapsed.TotalSeconds;
                     File.WriteAllText(Path.Combine(outputFolder, "capture-summary.json"), JsonUtility.ToJson(summary, true));
 
-                    string line = $"Forest capture: {images.Count} image(s) and {debugImages.Count} debug image(s) written to {summary.outputFolder} in {summary.seconds:0} s.";
+                    string line = $"Forest capture: {images.Count} image(s) and {debugImages.Count} debug image(s) written to {summary.outputFolder} in {summary.seconds:0} s " +
+                        $"(preset {preset}, flashlight {torch.State}).";
                     if (summary.passed)
                         Debug.Log(line);
                     else
@@ -276,6 +290,7 @@ namespace Gamex.EditorTools
                     foreach (LODGroup group in forced)
                         if (group != null)
                             group.ForceLOD(-1);
+                    torch?.Dispose();
                     if (camera != null)
                         Object.DestroyImmediate(camera.gameObject);
                     if (ForestLighting.ActivePreset() != originalPreset && !string.IsNullOrEmpty(originalPreset))
@@ -364,7 +379,7 @@ namespace Gamex.EditorTools
             };
         }
 
-        static List<string> Judge(string viewId, StatsRecord stats, int errorPixels, bool isForest, string preset)
+        static List<string> Judge(string viewId, StatsRecord stats, int errorPixels, bool isForest, string preset, string flashlight)
         {
             var problems = new List<string>();
             if (errorPixels > 0)
@@ -376,9 +391,21 @@ namespace Gamex.EditorTools
                 problems.Add($"the frame is black (mean luminance {stats.meanLuminance:0.000}, {stats.shareBlack * 100f:0} % crushed)");
             else if (stats.meanLuminance > SaneLuminanceMax || stats.shareWhite > SaneClippedShare)
                 problems.Add($"the frame is blown out (mean luminance {stats.meanLuminance:0.000}, {stats.shareWhite * 100f:0} % clipped)");
-            else if (preset == ForestLightingPresets.Default && Array.IndexOf(ExposureViews, viewId) >= 0
+            else if (Array.IndexOf(ExposureViews, viewId) < 0)
+                return problems;
+            else if (preset == "OvercastMist"
                 && (stats.meanLuminance < ForestBudgets.OvercastLuminanceMin || stats.meanLuminance > ForestBudgets.OvercastLuminanceMax))
                 problems.Add($"mean luminance {stats.meanLuminance:0.000} is outside {ForestBudgets.OvercastLuminanceMin:0.00} to {ForestBudgets.OvercastLuminanceMax:0.00}");
+            else if (preset == "Night" && flashlight == "off"
+                && (stats.meanLuminance < ForestBudgets.NightDarkLuminanceMin || stats.meanLuminance > ForestBudgets.NightDarkLuminanceMax))
+                problems.Add($"mean luminance {stats.meanLuminance:0.000} without the torch is outside the night's {ForestBudgets.NightDarkLuminanceMin:0.000} to {ForestBudgets.NightDarkLuminanceMax:0.000}");
+            else if (preset == "Night" && flashlight == "on")
+            {
+                if (stats.meanLuminance < ForestBudgets.NightLitLuminanceMin || stats.meanLuminance > ForestBudgets.NightLitLuminanceMax)
+                    problems.Add($"mean luminance {stats.meanLuminance:0.000} with the torch is outside the night's {ForestBudgets.NightLitLuminanceMin:0.000} to {ForestBudgets.NightLitLuminanceMax:0.000}");
+                if (stats.shareWhite > ForestBudgets.NightClippedWhiteShareLimit)
+                    problems.Add($"{stats.shareWhite * 100f:0.00} % of the frame is clipped to white by the torch (limit {ForestBudgets.NightClippedWhiteShareLimit * 100f:0.0} %)");
+            }
             return problems;
         }
 
@@ -734,7 +761,7 @@ namespace Gamex.EditorTools
             }
         }
 
-        // The inspect profile (default sky, no fog, fixed exposure, neutral grading), the preset's key light and a
+        // The inspect profile (the inspect preset's sky, no fog, fixed exposure, neutral grading), its key light and a
         // grey floor at pivot height, which shows how a prop sits on flat ground before any sink is applied.
         static Camera BuildKitStage(List<Object> temporary)
         {
@@ -743,7 +770,7 @@ namespace Gamex.EditorTools
             volume.sharedProfile = ForestLighting.InspectProfile();
             temporary.Add(volume.gameObject);
 
-            ForestLightingPresets.Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Default);
+            ForestLightingPresets.Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Inspect);
             var key = new GameObject("Kit Key Light");
             temporary.Add(key);
             key.AddComponent<HDAdditionalLightData>();

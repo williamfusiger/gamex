@@ -23,6 +23,12 @@ namespace Gamex.Tests.Forest
     {
         // The three frames the render tests judge and save for review.
         static readonly string[] RenderViews = { "trail_start", "clearing", "ground_close" };
+        // N1: the night is judged where the player stands: on the trail, at the glade, and where the torch meets foliage at arm's
+        // length (crouched in a thicket, a young fir at 3.5 m). Not ground_close: its camera at 0.4 m puts the hand-held torch a
+        // hand's breadth above the litter, a pose the player cannot take.
+        static readonly string[] NightViews = { "trail_start", "clearing", "crouch_hide", "fir_close" };
+        // N1: what the player sees at night, saved for review with the torch on and off.
+        static readonly string[] NightStillViews = { "trail_start", "trail_mid_fwd", "clearing", "ground_close", "crouch_hide", "long_sightline", "hollow_rim", "deadfall" };
         // Where the frame is most expensive in different ways: the first view, inside a thicket, open sky, the longest view.
         static readonly string[] BudgetViews = { "trail_start", "crouch_hide", "clearing", "long_sightline" };
 
@@ -254,25 +260,108 @@ namespace Gamex.Tests.Forest
             Assert.IsEmpty(touched, $"A capsule of radius {radius} m swept along the trails touches {touched.Count} collider(s); a large agent cannot pass:\n  " + string.Join("\n  ", touched));
         }
 
+        // ---- The torch (N1) ----
+
+        [UnityTest]
+        public IEnumerator Flashlight_StartsOnAndToggles()
+        {
+            GameObject player = ForestPlaySupport.RequireRoot("Player");
+            PlayerFlashlight torch = player.GetComponentInChildren<PlayerFlashlight>(true);
+            Assert.IsNotNull(torch, "The forest's player carries no torch.");
+            yield return null;
+
+            Assert.IsTrue(torch.IsOn, "The torch must start switched on.");
+            Assert.IsTrue(torch.Light.isActiveAndEnabled, "The torch is on but its light is not.");
+            var events = new List<bool>();
+            torch.IsOnChanged += events.Add;
+            torch.Toggle();
+            yield return null;
+            Assert.IsFalse(torch.IsOn);
+            Assert.IsFalse(torch.Light.enabled, "The torch is off but its light is not.");
+            torch.Toggle();
+            yield return null;
+            Assert.IsTrue(torch.IsOn);
+            Assert.IsTrue(torch.Light.enabled);
+            CollectionAssert.AreEqual(new[] { false, true }, events, "IsOnChanged must report every switch, once.");
+
+            // The binding, read by reflection (this assembly does not reference the Input System): the reader's Flashlight action,
+            // F on the keyboard and a button on the gamepad, enabled, and not pressed by itself.
+            var reader = player.GetComponent<PlayerInputReader>();
+            object action = typeof(PlayerInputReader).GetField("flashlight", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(reader);
+            Assert.IsNotNull(action, "PlayerInputReader has no 'flashlight' action.");
+            Assert.AreEqual("Flashlight", action.GetType().GetProperty("name").GetValue(action));
+            Assert.IsTrue((bool)action.GetType().GetProperty("enabled").GetValue(action), "The Flashlight action is not enabled.");
+            var paths = new List<string>();
+            foreach (object binding in (IEnumerable)action.GetType().GetProperty("bindings").GetValue(action))
+                paths.Add((string)binding.GetType().GetProperty("path").GetValue(binding));
+            CollectionAssert.Contains(paths, "<Keyboard>/f", "The torch must be on F.");
+            Assert.IsTrue(paths.Exists(path => path.StartsWith("<Gamepad>/", StringComparison.Ordinal)), "The torch has no gamepad button: " + string.Join(", ", paths));
+            Assert.IsFalse(reader.FlashlightPressed);
+            Debug.Log("Forest torch bindings: " + string.Join(", ", paths));
+        }
+
+        [UnityTest]
+        public IEnumerator Flashlight_LagsBehindTheView()
+        {
+            GameObject player = ForestPlaySupport.RequireRoot("Player");
+            var controller = player.GetComponent<PlayerController>();
+            PlayerFlashlight torch = player.GetComponentInChildren<PlayerFlashlight>(true);
+            Assert.IsNotNull(torch, "The forest's player carries no torch.");
+            Transform pivot = torch.transform.parent;
+            // The test turns and moves the body itself; locked controls leave the view to it.
+            controller.ControlsLocked = true;
+            for (int i = 0; i < 10; i++)
+                yield return null;
+
+            Quaternion aim = Quaternion.Inverse(pivot.rotation) * torch.transform.rotation;
+            float Behind() => Quaternion.Angle(torch.transform.rotation, pivot.rotation * aim);
+            Assert.Less(Vector3.Angle(torch.transform.forward, pivot.forward), 5f, "At rest the beam must point where the player looks.");
+
+            // A sudden turn of 30 degrees: the beam trails, at most by its limit, and catches up within half a second.
+            controller.Teleport(player.transform.position, player.transform.eulerAngles.y + 30f);
+            yield return null;
+            float first = Behind();
+            Assert.Greater(first, 1f, "The beam does not lag behind a turn.");
+            Assert.LessOrEqual(first, torch.MaxLagDegrees + 0.01f, "The beam trails the view by more than its limit.");
+            for (int i = 0; i < 30; i++)
+                yield return null;
+            Assert.Less(Behind(), 0.1f, "The beam does not catch up with the view.");
+
+            // A jump of the view (a teleport, a cut) is not a turn: the beam must not swing after it.
+            controller.Teleport(player.transform.position + new Vector3(8f, 0f, 0f), player.transform.eulerAngles.y - 90f);
+            yield return null;
+            Assert.Less(Behind(), 0.05f, "The beam swings after a teleport.");
+            Debug.Log($"Forest torch lag: {first:0.0} degrees one frame after a 30 degree turn (limit {torch.MaxLagDegrees}, time constant {torch.LagSeconds} s).");
+        }
+
         // ---- Rendering ----
 
         [UnityTest]
         public IEnumerator Render_HasNoErrorPixels()
         {
+            // N1: as the game starts (the night, the torch on), and under the overcast day.
             var problems = new List<string>();
-            yield return RenderViewsAndJudge(ForestPlayBudgets.RenderWidth, ForestPlayBudgets.RenderHeight, ForestPlayBudgets.RenderFrames, null, (view, stats) =>
+            Action<string, ForestPlaySupport.FrameStats> judge = (view, stats) =>
             {
                 if (stats.shareMagenta >= ForestPlayBudgets.ErrorPixelShareLimit)
                     problems.Add($"{view}: {stats.shareMagenta * 100f:0.000} % near-magenta pixels: a broken material or a missing diffusion profile");
                 if (stats.shareCyan >= ForestPlayBudgets.ErrorPixelShareLimit)
                     problems.Add($"{view}: {stats.shareCyan * 100f:0.000} % near-cyan pixels: a shader that was not compiled");
-            });
+            };
+            yield return RenderViewsAndJudge(ForestPlayBudgets.RenderWidth, ForestPlayBudgets.RenderHeight, ForestPlayBudgets.RenderFrames, null,
+                (view, stats) => judge(view + " (night, torch on)", stats), withFlashlight: true);
+            ForestPlaySupport.UsePreset("OvercastMist");
+            yield return RenderViewsAndJudge(ForestPlayBudgets.RenderWidth, ForestPlayBudgets.RenderHeight, ForestPlayBudgets.RenderFrames, null,
+                (view, stats) => judge(view + " (overcast)", stats));
             Assert.IsEmpty(problems, string.Join("\n", problems));
         }
 
         [UnityTest]
         public IEnumerator Render_ExposureIsSane()
         {
+            // The window below is the overcast day's (N1: no longer the scene's default preset, so it is switched to). The night has
+            // its own test, Render_NightExposure.
+            ForestPlaySupport.UsePreset("OvercastMist");
             var problems = new List<string>();
             yield return RenderViewsAndJudge(ForestPlayBudgets.RenderWidth, ForestPlayBudgets.RenderHeight, ForestPlayBudgets.RenderFrames, null, (view, stats) =>
             {
@@ -288,37 +377,122 @@ namespace Gamex.Tests.Forest
         }
 
         [UnityTest]
-        [Timeout(600000)]
+        [Timeout(900000)]
         public IEnumerator Render_ReferenceStills()
         {
-            // These, not the edit-mode captures, show what the player sees: time runs and exposure adapts.
+            // These, not the edit-mode captures, show what the player sees: time runs, exposure adapts and the torch lags.
+            // N1: the night with the torch on (<view>.png, as the game starts), the same views without it (<view>__torch_off.png),
+            // one still in the middle of a quick turn (trail_start__turning.png), and the overcast day (<view>__overcast.png).
             string folder = ForestPlaySupport.OutputFolder();
             var written = new List<string>();
-            yield return RenderViewsAndJudge(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight, ForestPlayBudgets.StillFrames, folder, (view, stats) =>
+            Action<string, ForestPlaySupport.FrameStats> record = (file, stats) =>
             {
-                written.Add(Path.Combine(folder, view + ".png"));
-            });
-            Assert.AreEqual(RenderViews.Length, written.Count);
+                written.Add(Path.Combine(folder, file + ".png"));
+                Debug.Log($"Forest still {file}: mean luminance {stats.meanLuminance:0.000}, {stats.shareWhite * 100f:0.00} % clipped, {stats.shareBlack * 100f:0.00} % crushed.");
+            };
+            yield return RenderViewsAndJudge(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight, ForestPlayBudgets.StillFrames, folder, record,
+                withFlashlight: true, views: NightStillViews);
+            yield return RenderViewsAndJudge(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight, ForestPlayBudgets.StillFrames, folder, record,
+                withFlashlight: true, views: NightStillViews, torchOn: false, fileSuffix: "__torch_off");
+            yield return RenderTurningStill(folder, record);
+            ForestPlaySupport.UsePreset("OvercastMist");
+            yield return RenderViewsAndJudge(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight, ForestPlayBudgets.StillFrames, folder, record,
+                fileSuffix: "__overcast");
+
+            Assert.AreEqual(2 * NightStillViews.Length + 1 + RenderViews.Length, written.Count);
             foreach (string path in written)
                 Assert.IsTrue(File.Exists(path) && new FileInfo(path).Length > 0, $"The still {path} was not written.");
-            Debug.Log($"Forest play-mode stills written to {Path.GetFullPath(folder)}: {string.Join(", ", RenderViews)}.");
+            Debug.Log($"Forest play-mode stills written to {Path.GetFullPath(folder)}: {written.Count} files.");
         }
 
-        // Renders each of the three views with a camera that copies the player's, and hands the frame's statistics to the caller.
-        static IEnumerator RenderViewsAndJudge(int width, int height, int frames, string saveFolder, Action<string, ForestPlaySupport.FrameStats> judge)
+        // trail_start while the view turns right at 180 degrees a second: the beam trails the view by its lag.
+        static IEnumerator RenderTurningStill(string folder, Action<string, ForestPlaySupport.FrameStats> record)
         {
-            Camera camera = ForestPlaySupport.CreateMeasuredCamera();
+            int width = ForestPlayBudgets.FrameWidth, height = ForestPlayBudgets.FrameHeight;
+            Camera camera = ForestPlaySupport.CreateMeasuredCamera(withFlashlight: true);
+            PlayerFlashlight torch = ForestPlaySupport.Flashlight(camera);
             RenderTexture target = ForestPlaySupport.CreateTarget(width, height);
             camera.targetTexture = target;
             try
             {
-                foreach (string view in RenderViews)
+                Transform view = ForestPlaySupport.RequireViewpoint("trail_start");
+                yield return ForestPlaySupport.RenderFrames(camera, view, ForestPlaySupport.TurningWarmupFrames);
+                for (int i = 0; i < 20; i++)
                 {
-                    yield return ForestPlaySupport.RenderFrames(camera, ForestPlaySupport.RequireViewpoint(view), frames);
-                    Color32[] pixels = ForestPlaySupport.ReadPixels(target);
-                    if (saveFolder != null)
-                        SavePng(Path.Combine(saveFolder, view + ".png"), pixels, width, height);
-                    judge(view, ForestPlaySupport.Measure(pixels));
+                    camera.transform.rotation = Quaternion.AngleAxis(3f, Vector3.up) * camera.transform.rotation;
+                    camera.Render();
+                    yield return null;
+                }
+                camera.Render();
+                Color32[] pixels = ForestPlaySupport.ReadPixels(target);
+                float behind = Vector3.Angle(torch.transform.forward, camera.transform.forward);
+                Debug.Log($"Forest torch while turning at 180 degrees a second: the beam's axis is {behind:0.0} degrees from the view's (limit {torch.MaxLagDegrees}).");
+                SavePng(Path.Combine(folder, "trail_start__turning.png"), pixels, width, height);
+                record("trail_start__turning", ForestPlaySupport.Measure(pixels));
+            }
+            finally
+            {
+                camera.targetTexture = null;
+                target.Release();
+                Object.Destroy(target);
+                ForestPlaySupport.ReleaseMeasuredCamera(camera);
+            }
+        }
+
+        [UnityTest]
+        [Timeout(600000)]
+        public IEnumerator Render_NightExposure()
+        {
+            // N1: under the night, each view twice, without and with the torch. Without it the frame is dark but never black; with it
+            // the frame stays a night frame, the torch lights a readable part of it, and near foliage in the beam is not clipped.
+            ForestPlaySupport.UsePreset("Night");
+            int width = ForestPlayBudgets.RenderWidth, height = ForestPlayBudgets.RenderHeight;
+            Camera camera = ForestPlaySupport.CreateMeasuredCamera(withFlashlight: true);
+            PlayerFlashlight torch = ForestPlaySupport.Flashlight(camera);
+            RenderTexture target = ForestPlaySupport.CreateTarget(width, height);
+            camera.targetTexture = target;
+            var problems = new List<string>();
+            try
+            {
+                foreach (string view in NightViews)
+                {
+                    Transform viewpoint = ForestPlaySupport.RequireViewpoint(view);
+                    torch.SetOn(false);
+                    yield return ForestPlaySupport.RenderFrames(camera, viewpoint, ForestPlayBudgets.RenderFrames);
+                    Color32[] dark = ForestPlaySupport.ReadPixels(target);
+                    torch.SetOn(true);
+                    yield return ForestPlaySupport.RenderFrames(camera, viewpoint, ForestPlayBudgets.RenderFrames);
+                    Color32[] lit = ForestPlaySupport.ReadPixels(target);
+
+                    ForestPlaySupport.FrameStats off = ForestPlaySupport.Measure(dark), on = ForestPlaySupport.Measure(lit);
+                    float[] blocksOff = ForestPlaySupport.BlockLuminance(dark, width, height, ForestPlayBudgets.LitBlockSize, out int columns, out int rows);
+                    float[] blocksOn = ForestPlaySupport.BlockLuminance(lit, width, height, ForestPlayBudgets.LitBlockSize, out _, out _);
+                    int litBlocks = 0;
+                    double litSum = 0.0;
+                    for (int i = 0; i < blocksOn.Length; i++)
+                    {
+                        if (blocksOn[i] - blocksOff[i] < ForestPlayBudgets.LitBlockGain)
+                            continue;
+                        litBlocks++;
+                        litSum += blocksOn[i];
+                    }
+                    float litShare = litBlocks / (float)(columns * rows);
+                    float litMean = litBlocks > 0 ? (float)(litSum / litBlocks) : 0f;
+                    Debug.Log($"Forest night at {view}: torch off mean luminance {off.meanLuminance:0.000}, {off.shareBlack * 100f:0.0} % crushed; " +
+                        $"torch on mean {on.meanLuminance:0.000}, {on.shareWhite * 100f:0.00} % clipped, lit area {litShare * 100f:0.0} % of the frame at mean {litMean:0.000}.");
+
+                    if (off.meanLuminance < ForestPlayBudgets.NightDarkLuminanceMin || off.meanLuminance > ForestPlayBudgets.NightDarkLuminanceMax)
+                        problems.Add($"{view}, torch off: mean luminance {off.meanLuminance:0.000} is outside {ForestPlayBudgets.NightDarkLuminanceMin:0.000} to {ForestPlayBudgets.NightDarkLuminanceMax:0.000}");
+                    if (off.shareBlack >= ForestPlayBudgets.CrushedBlackShareLimit)
+                        problems.Add($"{view}, torch off: {off.shareBlack * 100f:0.0} % of the frame is crushed to black (limit {ForestPlayBudgets.CrushedBlackShareLimit * 100f:0} %)");
+                    if (on.meanLuminance < ForestPlayBudgets.NightLitLuminanceMin || on.meanLuminance > ForestPlayBudgets.NightLitLuminanceMax)
+                        problems.Add($"{view}, torch on: mean luminance {on.meanLuminance:0.000} is outside {ForestPlayBudgets.NightLitLuminanceMin:0.000} to {ForestPlayBudgets.NightLitLuminanceMax:0.000}");
+                    if (litShare < ForestPlayBudgets.NightLitAreaShareMin)
+                        problems.Add($"{view}, torch on: the torch brightens only {litShare * 100f:0.0} % of the frame (at least {ForestPlayBudgets.NightLitAreaShareMin * 100f:0} %)");
+                    else if (litMean < ForestPlayBudgets.NightLitAreaLuminanceMin)
+                        problems.Add($"{view}, torch on: the lit area's mean luminance {litMean:0.000} is under {ForestPlayBudgets.NightLitAreaLuminanceMin:0.00}: not readable");
+                    if (on.shareWhite > ForestPlayBudgets.NightClippedWhiteShareLimit)
+                        problems.Add($"{view}, torch on: {on.shareWhite * 100f:0.00} % of the frame is clipped to white (limit {ForestPlayBudgets.NightClippedWhiteShareLimit * 100f:0.0} %)");
                 }
             }
             finally
@@ -326,7 +500,38 @@ namespace Gamex.Tests.Forest
                 camera.targetTexture = null;
                 target.Release();
                 Object.Destroy(target);
-                Object.Destroy(camera.gameObject);
+                ForestPlaySupport.ReleaseMeasuredCamera(camera);
+            }
+            Assert.IsEmpty(problems, string.Join("\n", problems));
+        }
+
+        // Renders each view with a camera that copies the player's, and hands the frame's statistics to the caller. N1: with the
+        // player's torch on that camera when asked (on or off), other views than the three render views, and a suffix for the files.
+        static IEnumerator RenderViewsAndJudge(int width, int height, int frames, string saveFolder, Action<string, ForestPlaySupport.FrameStats> judge,
+            bool withFlashlight = false, string[] views = null, bool torchOn = true, string fileSuffix = "")
+        {
+            Camera camera = ForestPlaySupport.CreateMeasuredCamera(withFlashlight);
+            if (withFlashlight)
+                ForestPlaySupport.Flashlight(camera).SetOn(torchOn);
+            RenderTexture target = ForestPlaySupport.CreateTarget(width, height);
+            camera.targetTexture = target;
+            try
+            {
+                foreach (string view in views ?? RenderViews)
+                {
+                    yield return ForestPlaySupport.RenderFrames(camera, ForestPlaySupport.RequireViewpoint(view), frames);
+                    Color32[] pixels = ForestPlaySupport.ReadPixels(target);
+                    if (saveFolder != null)
+                        SavePng(Path.Combine(saveFolder, view + fileSuffix + ".png"), pixels, width, height);
+                    judge(view + fileSuffix, ForestPlaySupport.Measure(pixels));
+                }
+            }
+            finally
+            {
+                camera.targetTexture = null;
+                target.Release();
+                Object.Destroy(target);
+                ForestPlaySupport.ReleaseMeasuredCamera(camera);
             }
         }
 
@@ -480,7 +685,8 @@ namespace Gamex.Tests.Forest
             foreach (Counter counter in counters)
                 counter.recorder = ProfilerRecorder.StartNew(counter.category, counter.name);
 
-            Camera camera = ForestPlaySupport.CreateMeasuredCamera();
+            // N1: as the game starts, at night with the torch on and casting shadows.
+            Camera camera = ForestPlaySupport.CreateMeasuredCamera(withFlashlight: true);
             RenderTexture target = ForestPlaySupport.CreateTarget(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight);
             camera.targetTexture = target;
             var lines = new List<string>();
@@ -646,7 +852,8 @@ namespace Gamex.Tests.Forest
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = -1;
 
-            Camera camera = ForestPlaySupport.CreateMeasuredCamera();
+            // N1: as the game starts, at night with the torch on and casting shadows.
+            Camera camera = ForestPlaySupport.CreateMeasuredCamera(withFlashlight: true);
             RenderTexture target = ForestPlaySupport.CreateTarget(ForestPlayBudgets.FrameWidth, ForestPlayBudgets.FrameHeight);
             var pixel = new Texture2D(1, 1, TextureFormat.RGB24, false);
             camera.targetTexture = target;

@@ -53,8 +53,7 @@ namespace Gamex.EditorTools
         const float AmbientOcclusionDirectStrength = 0.25f;
         const int KeyShadowResolution = 2048;
 
-        // The same in every preset (section 9.2).
-        static readonly Vector2 HistogramPercentages = new(40f, 90f);
+        // The same in every preset (section 9.2). The metering and the histogram band are per preset since N1.
         const float BloomScatter = 0.65f;
         const float BloomThreshold = 0f;
         const float VignetteSmoothness = 0.4f;
@@ -105,7 +104,7 @@ namespace Gamex.EditorTools
             int active = presets.FindIndex(preset => preset.name == activePreset);
             if (active < 0)
                 throw new InvalidOperationException($"Lighting preset {activePreset} cannot be built: its sky " +
-                    $"'{ForestLightingPresets.SkyId(activePreset)}' has not been downloaded (Tools/forest/fetch_assets.py, milestone M1).");
+                    $"'{ForestLightingPresets.SkyId(activePreset)}' has not been downloaded (Tools/forest/fetch_assets.py --id {ForestLightingPresets.SkyId(activePreset)}).");
 
             var profiles = new List<VolumeProfile>();
             for (int i = 0; i < presets.Count; i++)
@@ -114,8 +113,9 @@ namespace Gamex.EditorTools
                 LogExposure(presets[i]);
             }
 
-            // Kit turntables look at assets under the default sky; refreshed here so it follows a retuned preset.
-            int inspect = presets.FindIndex(preset => preset.name == ForestLightingPresets.Default);
+            // Kit turntables look at assets under the inspect preset's daylight sky (not the scene's night); refreshed here so it
+            // follows a retuned preset.
+            int inspect = presets.FindIndex(preset => preset.name == ForestLightingPresets.Inspect);
             if (inspect >= 0)
                 WriteInspectProfile(presets[inspect], skies[inspect]);
 
@@ -236,9 +236,9 @@ namespace Gamex.EditorTools
         }
 
         /// <summary>
-        /// Atmosphere_Inspect: the default sky with no fog, fixed exposure and neutral grading, for kit turntables
-        /// and LOD sheets. Created when it is missing or has lost its sky; an existing one is returned untouched,
-        /// because captures must not write inside Assets. A scene build refreshes it.
+        /// Atmosphere_Inspect: the inspect preset's sky (ForestLightingPresets.Inspect, daylight) with no fog, fixed exposure and
+        /// neutral grading, for kit turntables and LOD sheets. Created when it is missing or has lost its sky; an existing one is
+        /// returned untouched, because captures must not write inside Assets. A scene build refreshes it.
         /// </summary>
         public static VolumeProfile InspectProfile()
         {
@@ -246,11 +246,11 @@ namespace Gamex.EditorTools
             if (IsUsableInspectProfile(existing))
                 return existing;
 
-            Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Default);
+            Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Inspect);
             Validate(preset);
             if (!TryLoadSky(preset, out SkyInput sky))
                 throw new InvalidOperationException($"The inspect profile needs the sky '{preset.skyId}', which has not been downloaded " +
-                    "(Tools/forest/fetch_assets.py, milestone M1).");
+                    $"(Tools/forest/fetch_assets.py --id {preset.skyId}).");
             return WriteInspectProfile(preset, sky);
         }
 
@@ -281,6 +281,54 @@ namespace Gamex.EditorTools
             if (!EditorSceneManager.SaveScene(scene))
                 throw new IOException($"Could not save {scene.path}.");
 
+            Debug.Log($"Forest lighting: preset {preset} applied and saved in {scene.path}.");
+        }
+
+        /// <summary>The night, the scene's default preset (N1). Switches the open forest scene to it and saves.</summary>
+        [MenuItem("Gamex/Forest/Preset/Night")]
+        public static void ApplyNight() => ApplyAndSave("Night");
+
+        /// <summary>The overcast day the forest was first built under. Switches the open forest scene to it and saves.</summary>
+        [MenuItem("Gamex/Forest/Preset/Overcast Mist")]
+        public static void ApplyOvercastMist() => ApplyAndSave("OvercastMist");
+
+        /// <summary>
+        /// Rebuilds only the lighting of the saved forest scene from the preset values (profiles, key lights, which preset is
+        /// active: -forestPreset, else the one active now, else the default) and saves it, so a retuned preset can be judged
+        /// without regenerating the world. A full scene build does the same as its stage 11.
+        /// </summary>
+        [MenuItem("Gamex/Forest/Preset/Rebuild Lighting")]
+        public static void RebuildLightingFromArgs()
+        {
+            if (Application.isPlaying)
+                throw new InvalidOperationException("The lighting is rebuilt in the saved scene; leave play mode first.");
+            if (FindLightingRoot() == null && File.Exists(ForestPaths.ScenePath))
+                EditorSceneManager.OpenScene(ForestPaths.ScenePath, OpenSceneMode.Single);
+            Transform root = FindLightingRoot()
+                ?? throw new InvalidOperationException("The open scene has no forest lighting. Open or rebuild the forest scene first.");
+            Scene scene = root.gameObject.scene;
+            string current = ActivePreset();
+            string preset = ForestArgs.Value("-forestPreset", string.IsNullOrEmpty(current) ? ForestLightingPresets.Default : current);
+            Build(preset);
+            if (string.IsNullOrEmpty(scene.path) || !EditorSceneManager.SaveScene(scene))
+                throw new IOException($"Could not save the scene '{scene.path}'.");
+            Debug.Log($"Forest lighting: rebuilt with preset {preset} active and saved in {scene.path}.");
+        }
+
+        static void ApplyAndSave(string preset)
+        {
+            if (Application.isPlaying)
+                throw new InvalidOperationException("Lighting presets are applied to the saved scene; leave play mode first.");
+            if (FindLightingRoot() == null && File.Exists(ForestPaths.ScenePath)
+                && (Application.isBatchMode || EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()))
+                EditorSceneManager.OpenScene(ForestPaths.ScenePath, OpenSceneMode.Single);
+            if (!ApplyPreset(preset))
+                throw new InvalidOperationException(FindLightingRoot() == null
+                    ? "The open scene has no forest lighting. Open or rebuild the forest scene first."
+                    : $"The open scene has no lighting preset '{preset}'. Its sky may not be downloaded; rebuild the scene after fetching it.");
+            Scene scene = FindLightingRoot().gameObject.scene;
+            if (string.IsNullOrEmpty(scene.path) || !EditorSceneManager.SaveScene(scene))
+                throw new IOException($"Could not save the scene '{scene.path}'.");
             Debug.Log($"Forest lighting: preset {preset} applied and saved in {scene.path}.");
         }
 
@@ -347,16 +395,25 @@ namespace Gamex.EditorTools
             else
             {
                 exposure.mode.Override(ExposureMode.AutomaticHistogram);
-                exposure.meteringMode.Override(MeteringMode.CenterWeighted);
+                exposure.meteringMode.Override(preset.exposureMetering);
+                if (preset.exposureMetering == MeteringMode.ProceduralMask)
+                {
+                    // A disc in the middle of the screen, where the torch's hot spot falls.
+                    exposure.proceduralCenter.Override(new Vector2(0.5f, 0.5f));
+                    exposure.proceduralRadii.Override(new Vector2(preset.exposureMaskRadius, preset.exposureMaskRadius));
+                    exposure.proceduralSoftness.Override(0.5f);
+                }
                 exposure.limitMin.Override(preset.exposureMin);
                 exposure.limitMax.Override(preset.exposureMax);
-                exposure.histogramPercentages.Override(HistogramPercentages);
+                exposure.histogramPercentages.Override(preset.exposureHistogram);
                 // With curve remapping on, HDRP takes both limits from a curve and ignores the two above.
                 // The project default leaves it off; pinned here so the clamp cannot be lost to a default.
                 exposure.histogramUseCurveRemapping.Override(false);
             }
 
             AddGrading(profile, preset.contrast, preset.saturation, preset.whiteBalanceTemperature);
+            if (preset.shadowGamma != 0f)
+                AddOverride<LiftGammaGain>(profile).gamma.Override(new Vector4(0f, 0f, 0f, preset.shadowGamma));
             AddLens(profile, preset.bloomIntensity, ParseGrain(preset), preset.grainIntensity, preset.vignetteIntensity);
             AddFoliageProfile(profile);
             return Finish(profile);
@@ -639,12 +696,20 @@ namespace Gamex.EditorTools
             if (preset.fixedExposure)
                 Require(IsWithin(preset.exposureFixed, -20f, 30f), preset, "exposureFixed must be a plausible EV100");
             else
+            {
                 Require(IsWithin(preset.exposureMin, -20f, 30f) && IsWithin(preset.exposureMax, -20f, 30f) && preset.exposureMin < preset.exposureMax,
                     preset, "exposureMin must be below exposureMax, both plausible EV100 values");
+                Require(preset.exposureMetering == MeteringMode.CenterWeighted || preset.exposureMetering == MeteringMode.Average
+                    || (preset.exposureMetering == MeteringMode.ProceduralMask && IsWithin(preset.exposureMaskRadius, 0.05f, 1f)),
+                    preset, "exposureMetering must be CenterWeighted, Average, or ProceduralMask with a mask radius of 0.05 to 1 (MaskWeighted needs a texture the preset cannot name)");
+                Vector2 band = preset.exposureHistogram;
+                Require(IsWithin(band.x, 0f, 100f) && IsWithin(band.y, 0f, 100f) && band.x < band.y, preset, "exposureHistogram must be two percentages, low below high");
+            }
 
             Require(IsWithin(preset.whiteBalanceTemperature, -100f, 100f), preset, "whiteBalanceTemperature must be -100 to 100");
             Require(IsWithin(preset.saturation, -100f, 100f), preset, "saturation must be -100 to 100");
             Require(IsWithin(preset.contrast, -100f, 100f), preset, "contrast must be -100 to 100");
+            Require(IsWithin(preset.shadowGamma, -0.5f, 0.5f), preset, "shadowGamma must be -0.5 to 0.5 (HDRP allows -1 to 1; beyond a half the frame turns milky or black)");
             Require(IsWithin(preset.bloomIntensity, 0f, 1f), preset, "bloomIntensity must be 0 to 1");
             Require(IsWithin(preset.grainIntensity, 0f, 1f), preset, "grainIntensity must be 0 to 1");
             Require(IsWithin(preset.vignetteIntensity, 0f, 1f), preset, "vignetteIntensity must be 0 to 1");

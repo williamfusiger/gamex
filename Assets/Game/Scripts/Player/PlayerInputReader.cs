@@ -18,6 +18,7 @@ namespace Gamex
         InputAction throwItem;
         InputAction restart;
         InputAction toggleDebug;
+        InputAction flashlight;
 
         public Vector2 Move => move.ReadValue<Vector2>();
 
@@ -33,6 +34,7 @@ namespace Gamex
         public bool ThrowPressed => throwItem.WasPressedThisFrame();
         public bool RestartPressed => restart.WasPressedThisFrame();
         public bool ToggleDebugPressed => toggleDebug.WasPressedThisFrame();
+        public bool FlashlightPressed => flashlight.WasPressedThisFrame();
 
         void Awake()
         {
@@ -53,6 +55,8 @@ namespace Gamex
             throwItem = Button("Throw", "<Mouse>/leftButton", "<Gamepad>/rightTrigger");
             restart = Button("Restart", "<Keyboard>/r", "<Gamepad>/start");
             toggleDebug = Button("ToggleDebug", "<Keyboard>/f1");
+            // The left shoulder is free and reachable without leaving either stick, so the light can be killed mid-turn.
+            flashlight = Button("Flashlight", "<Keyboard>/f", "<Gamepad>/leftShoulder");
         }
 
         void OnEnable() => SetEnabled(true);
@@ -86,7 +90,7 @@ namespace Gamex
 
         InputAction[] AllActions() => new[]
         {
-            move, lookPointer, lookStick, sprint, crouch, interact, throwItem, restart, toggleDebug,
+            move, lookPointer, lookStick, sprint, crouch, interact, throwItem, restart, toggleDebug, flashlight,
         };
     }
 }

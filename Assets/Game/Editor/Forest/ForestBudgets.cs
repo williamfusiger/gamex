@@ -50,13 +50,24 @@ namespace Gamex.EditorTools
         /// worst view of the 29 (pano_90, 18.39 M) costs 9.6 to 10.5 ms a frame in the macOS development player against the player
         /// budget of 12.5 ms (see GpuFrameMsBudget). Budget about 13 % above the measured worst budget view, warning about 4 % above it.
         /// </para>
+        /// <para>
+        /// N1, the night and the player's torch (build/issues/N1-night.md, section 4): the torch's shadow map, drawn every frame, adds the
+        /// dense stand's casters in its cone, 2.0 to 2.9 M triangles a view; Budget_Counts measures with the torch on, as the game starts,
+        /// and read 19.45 M at long_sightline (D2 budget 19.0 M). Neither a 512-pixel map nor a 25 m range removes them (the casters, not
+        /// the map, cost: 0.3 M fewer at 25 m). The player's frame time is what the budget protects: with the torch on, the worst of the
+        /// 29 views (pano_90, 21.30 M triangles, 35.64 M vertices in the player) runs at 11.3 to 12.5 ms against 12.5 ms. Budget 21.5 M
+        /// (that view, which fits), warning 20.0 M (about 3 % above the measured worst budget view).
+        /// </para>
         /// </remarks>
-        public const long TrianglesBudget = 19000000L;
-        public const long TrianglesWarn = 17500000L;
+        public const long TrianglesBudget = 21500000L;
+        public const long TrianglesWarn = 20000000L;
 
-        /// <summary>"Vertices Count". Re-based with the triangles (see there): E1 19.0 M and 17.0 M; D2 31.0 M and 28.5 M.</summary>
-        public const long VerticesBudget = 31000000L;
-        public const long VerticesWarn = 28500000L;
+        /// <summary>
+        /// "Vertices Count". Re-based with the triangles (see there): E1 19.0 M and 17.0 M; D2 31.0 M and 28.5 M; N1 (the torch's shadow map,
+        /// 31.60 M at crouch_hide in Budget_Counts; pano_90 35.64 M in the player within its frame budget) 36.0 M and 33.0 M.
+        /// </summary>
+        public const long VerticesBudget = 36000000L;
+        public const long VerticesWarn = 33000000L;
 
         /// <summary>"Draw Calls Count" without the GPU Resident Drawer.</summary>
         public const long DrawCallsBudget = 4000L;
@@ -152,5 +163,28 @@ namespace Gamex.EditorTools
         /// <summary>Largest share of a frame that may be clipped to white, and crushed to black.</summary>
         public const float ClippedWhiteShareLimit = 0.05f;
         public const float CrushedBlackShareLimit = 0.20f;
+
+        // ---- The night (N1, build/issues/N1-night.md) ----
+
+        /// <summary>
+        /// Mean luminance window of a first-person frame under the Night preset with the torch off: dark, but never a black screen
+        /// (the lower bound is the capture's own black-frame limit).
+        /// </summary>
+        public const float NightDarkLuminanceMin = 0.02f;
+        public const float NightDarkLuminanceMax = 0.10f;
+
+        /// <summary>The same with the torch on: the whole frame stays a night frame.</summary>
+        public const float NightLitLuminanceMin = 0.04f;
+        public const float NightLitLuminanceMax = 0.20f;
+
+        /// <summary>
+        /// The lit area: the parts of a night frame the torch brightens (16-pixel blocks at least 0.03 brighter with it than without).
+        /// It must cover some of the frame, and its mean luminance must be readable.
+        /// </summary>
+        public const float NightLitAreaShareMin = 0.05f;
+        public const float NightLitAreaLuminanceMin = 0.15f;
+
+        /// <summary>Largest share of a night frame the torch may clip to white: near foliage in the beam must keep its detail.</summary>
+        public const float NightClippedWhiteShareLimit = 0.01f;
     }
 }

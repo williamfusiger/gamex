@@ -955,7 +955,7 @@ namespace Gamex.EditorTools
         // P7. The Inspector computes the sky's lux with a shader; the builder integrates a 1k copy on the CPU.
         static void ProbeSkyLux(Record record, Item item, Camera camera, Volume volume, List<Object> owned)
         {
-            string skyId = ForestLightingPresets.SkyId(ForestLightingPresets.Default);
+            string skyId = ForestLightingPresets.SkyId(ForestLightingPresets.Inspect);
             Cubemap cubemap = ForestSky.LoadCubemap(skyId);
             if (cubemap == null)
                 throw new SkipException($"Sky {skyId} is not downloaded and imported (fetch milestone M1, then Gamex/Forest/1 Import Assets).");
@@ -1132,7 +1132,7 @@ namespace Gamex.EditorTools
         // the two; a temporary copy is imported the other way.
         static void ProbeSkyCompression(Record record, Item item, Camera camera, Volume volume, List<Object> owned)
         {
-            string skyId = ForestLightingPresets.SkyId(ForestLightingPresets.Default);
+            string skyId = ForestLightingPresets.SkyId(ForestLightingPresets.Inspect);
             Cubemap cubemap = ForestSky.LoadCubemap(skyId);
             ForestAssetEntry entry = ForestManifest.Find(skyId);
             if (cubemap == null || entry == null)
@@ -1353,7 +1353,7 @@ namespace Gamex.EditorTools
                 new KeyValuePair<string, string>("mask.png", $"{ForestPaths.KitTextures}/{ProbeRocks}__mask.png"),
                 new KeyValuePair<string, string>("tmask.png", $"{ForestPaths.KitTextures}/{ProbeGround}__tmask.png"),
                 new KeyValuePair<string, string>("foliage basecolor.png", $"{ForestPaths.KitTextures}/{ProbeFoliage}__basecolor.png"),
-                new KeyValuePair<string, string>("sky.hdr", $"{ForestPaths.PolyHavenRoot}/{ForestLightingPresets.SkyId(ForestLightingPresets.Default)}/{ForestLightingPresets.SkyId(ForestLightingPresets.Default)}__sky.hdr"),
+                new KeyValuePair<string, string>("sky.hdr", $"{ForestPaths.PolyHavenRoot}/{ForestLightingPresets.SkyId(ForestLightingPresets.Inspect)}/{ForestLightingPresets.SkyId(ForestLightingPresets.Inspect)}__sky.hdr"),
             };
 
             int found = 0;
