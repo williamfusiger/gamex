@@ -1,0 +1,18 @@
+{
+    "name": "Gamex.Tests.Forest.PlayMode",
+    "rootNamespace": "Gamex.Tests.Forest",
+    "references": [
+        "Gamex.Runtime",
+        "UnityEngine.TestRunner",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "autoReferenced": false
+}

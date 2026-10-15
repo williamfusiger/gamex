@@ -30,3 +30,16 @@ crashlytics-build.properties
 
 # macOS
 .DS_Store
+
+# Forest: downloaded scans and generated assets are rebuilt from code
+# (python3 Tools/forest/fetch_assets.py, then Gamex > Forest > Build All).
+# They hold files above GitHub's 100 MB limit.
+/Assets/ThirdParty/PolyHaven/*
+!/Assets/ThirdParty/PolyHaven/THIRD_PARTY_ASSETS.md
+!/Assets/ThirdParty/PolyHaven/THIRD_PARTY_ASSETS.md.meta
+/Assets/Game/Scenes/ForestKit/
+/Assets/Game/Scenes/ForestKit.meta
+/Assets/Game/Scenes/ForestData/
+/Assets/Game/Scenes/ForestData.meta
+/Assets/Game/Scenes/Forest.unity
+/Assets/Game/Scenes/Forest.unity.meta
