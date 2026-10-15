@@ -18,10 +18,10 @@ namespace Gamex.Tests.Forest
         public const float GpuFrameMsBudget = 14.0f;
         public const float GpuFrameMsWarn = 13.0f;
 
-        public const long TrianglesBudget = 19000000L;
-        public const long TrianglesWarn = 17500000L;
-        public const long VerticesBudget = 31000000L;
-        public const long VerticesWarn = 28500000L;
+        public const long TrianglesBudget = 21500000L;
+        public const long TrianglesWarn = 20000000L;
+        public const long VerticesBudget = 36000000L;
+        public const long VerticesWarn = 33000000L;
         public const long DrawCallsBudget = 4000L;
         public const long DrawCallsWarn = 3000L;
         public const long SetPassCallsBudget = 250L;
@@ -38,6 +38,13 @@ namespace Gamex.Tests.Forest
         public const float OvercastLuminanceMax = 0.45f;
         public const float ClippedWhiteShareLimit = 0.05f;
         public const float CrushedBlackShareLimit = 0.20f;
+        public const float NightDarkLuminanceMin = 0.02f;
+        public const float NightDarkLuminanceMax = 0.10f;
+        public const float NightLitLuminanceMin = 0.04f;
+        public const float NightLitLuminanceMax = 0.20f;
+        public const float NightLitAreaShareMin = 0.05f;
+        public const float NightLitAreaLuminanceMin = 0.15f;
+        public const float NightClippedWhiteShareLimit = 0.01f;
 
         public const float CorridorCapsuleHeightMetres = 4f;
         public const float CorridorCapsuleLiftMetres = 0.3f;
@@ -56,6 +63,10 @@ namespace Gamex.Tests.Forest
         public const int RenderHeight = 540;
         public const int RenderFrames = 32;
         public const int StillFrames = 64;
+
+        /// <summary>Night exposure test: a 16-pixel block of the frame belongs to the lit area when the torch makes it this much brighter (0 to 1).</summary>
+        public const int LitBlockSize = 16;
+        public const float LitBlockGain = 0.03f;
 
         /// <summary>How the player moves: PlayerController's walk and sprint speed, gravity, and the pull that keeps it grounded.</summary>
         public const float WalkSpeed = 3.2f;

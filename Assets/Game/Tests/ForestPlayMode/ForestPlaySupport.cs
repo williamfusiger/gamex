@@ -138,14 +138,24 @@ namespace Gamex.Tests.Forest
         /// A disabled camera with the player camera's lens and HDRP settings, rendered explicitly once per
         /// frame. Whether enabled cameras render by themselves in batch-mode play mode is not known, and
         /// this way exactly one camera renders. The player is switched off.
+        /// N1: with <paramref name="withFlashlight"/> the player's torch moves onto this camera at the hand's pose, switched on, and
+        /// follows it with its lag, as it follows the player's view; without it the torch stays dark with the player.
         /// </summary>
-        public static Camera CreateMeasuredCamera()
+        public static Camera CreateMeasuredCamera(bool withFlashlight = false)
         {
             GameObject player = RequireRoot("Player");
             Camera playerCamera = player.GetComponentInChildren<Camera>(true);
             Assert.IsNotNull(playerCamera, "The Player has no camera.");
 
             var holder = new GameObject("Forest Test Camera");
+            if (withFlashlight)
+            {
+                PlayerFlashlight torch = player.GetComponentInChildren<PlayerFlashlight>(true);
+                Assert.IsNotNull(torch, "The Player carries no torch (PlayerFlashlight).");
+                torch.transform.SetParent(holder.transform, false);
+                torch.SetOn(true);
+                torch.SnapToView();
+            }
             var camera = holder.AddComponent<Camera>();
             camera.CopyFrom(playerCamera);
             holder.tag = "Untagged";
@@ -162,6 +172,44 @@ namespace Gamex.Tests.Forest
 
             player.SetActive(false);
             return camera;
+        }
+
+        /// <summary>Frames rendered at a view before a still is taken in the middle of a turn.</summary>
+        public const int TurningWarmupFrames = 32;
+
+        /// <summary>The torch riding on a measured camera, or null.</summary>
+        public static PlayerFlashlight Flashlight(Camera camera) => camera.GetComponentInChildren<PlayerFlashlight>(true);
+
+        /// <summary>
+        /// Destroys a measured camera. A torch riding on it goes back to the (switched-off) player's camera pivot first, so a later
+        /// camera of the same test can take it again.
+        /// </summary>
+        public static void ReleaseMeasuredCamera(Camera camera)
+        {
+            if (camera == null)
+                return;
+            PlayerFlashlight torch = Flashlight(camera);
+            if (torch != null)
+            {
+                Camera playerCamera = RequireRoot("Player").GetComponentInChildren<Camera>(true);
+                torch.transform.SetParent(playerCamera.transform, false);
+            }
+            UnityEngine.Object.Destroy(camera.gameObject);
+        }
+
+        /// <summary>
+        /// Makes one lighting preset of the scene active (Lighting/Preset_&lt;name&gt;), the others inactive first, as
+        /// ForestLighting.ApplyPreset does in the editor assembly this one cannot see. Every test loads the scene afresh.
+        /// </summary>
+        public static void UsePreset(string preset)
+        {
+            Transform lighting = RequireRoot("Lighting").transform;
+            Transform target = lighting.Find("Preset_" + preset);
+            Assert.IsNotNull(target, $"The forest scene has no lighting preset Lighting/Preset_{preset}.");
+            foreach (Transform child in lighting)
+                if (child != target && child.name.StartsWith("Preset_", StringComparison.Ordinal))
+                    child.gameObject.SetActive(false);
+            target.gameObject.SetActive(true);
         }
 
         public static RenderTexture CreateTarget(int width, int height)
@@ -203,6 +251,27 @@ namespace Gamex.Tests.Forest
 
         /// <summary>What ForestImageStats measures in the editor assembly, for the frames this suite judges.</summary>
         public struct FrameStats { public float meanLuminance, shareBlack, shareWhite, shareMagenta, shareCyan; }
+
+        /// <summary>Mean luminance (0 to 1, Rec. 709 on the encoded values) of each block of <paramref name="block"/> pixels a side.</summary>
+        public static float[] BlockLuminance(Color32[] pixels, int width, int height, int block, out int columns, out int rows)
+        {
+            columns = width / block;
+            rows = height / block;
+            var sums = new double[columns * rows];
+            for (int y = 0; y < rows * block; y++)
+            {
+                int row = y / block;
+                for (int x = 0; x < columns * block; x++)
+                {
+                    Color32 pixel = pixels[y * width + x];
+                    sums[row * columns + x / block] += 0.2126 * pixel.r + 0.7152 * pixel.g + 0.0722 * pixel.b;
+                }
+            }
+            var means = new float[sums.Length];
+            for (int i = 0; i < sums.Length; i++)
+                means[i] = (float)(sums[i] / (block * block * 255.0));
+            return means;
+        }
 
         public static FrameStats Measure(Color32[] pixels)
         {

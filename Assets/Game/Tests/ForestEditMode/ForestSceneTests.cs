@@ -296,8 +296,12 @@ namespace Gamex.Tests.Forest
 
             // A small patch far above the forest, painted with one layer, seen from straight above under the scene's own light.
             // Layer 0 is the control: if even that is black, the render says nothing about the layers behind the fourth.
+            // N1: under the daylight preset. The scene's default is now the night, under which every patch, the control too,
+            // renders near black and this test could only ignore itself.
             Camera camera = null;
             var luminance = new Dictionary<int, float>();
+            string presetBefore = ForestLighting.ActivePreset();
+            Assert.IsTrue(ForestLighting.ApplyPreset(ForestLightingPresets.Inspect), $"The scene has no {ForestLightingPresets.Inspect} preset to render the patches under.");
             try
             {
                 camera = new GameObject("Layer Test Camera") { hideFlags = HideFlags.HideAndDontSave }.AddComponent<Camera>();
@@ -314,6 +318,8 @@ namespace Gamex.Tests.Forest
             {
                 if (camera != null)
                     Object.DestroyImmediate(camera.gameObject);
+                if (!string.IsNullOrEmpty(presetBefore))
+                    ForestLighting.ApplyPreset(presetBefore);
             }
 
             const float notBlack = 0.03f;
@@ -389,14 +395,21 @@ namespace Gamex.Tests.Forest
                 Assert.Ignore($"{GreyboxSceneBuilder.ScenePath} does not exist, so there is no rig to compare with.");
 
             // The forest rig is a copy of the greybox rig, because the greybox builder may not be edited. This keeps the copy honest.
+            // N1: the forest's player carries a torch the greybox's does not (the greybox does not change in that step). The torch,
+            // CameraPivot/Flashlight and everything on it, is the one difference allowed; Flashlight_IsOnTheForestPlayer tests it.
             Scene greybox = EditorSceneManager.OpenScene(GreyboxSceneBuilder.ScenePath, OpenSceneMode.Single);
             GameObject greyboxPlayer = ForestTestSupport.Root(greybox, "Player");
             Assert.IsNotNull(greyboxPlayer, "The greybox scene has no Player.");
-            List<string> expected = DescribeRig(greyboxPlayer);
+            Assert.AreEqual(0, greyboxPlayer.GetComponentsInChildren<PlayerFlashlight>(true).Length, "The greybox's player has a torch; the greybox must not change in N1.");
+            List<string> expected = DescribeRig(greyboxPlayer, null);
 
             Scene forest = EditorSceneManager.OpenScene(ForestPaths.ScenePath, OpenSceneMode.Single);
             GameObject forestPlayer = ForestTestSupport.RequireRoot(forest, "Player");
-            List<string> actual = DescribeRig(forestPlayer);
+            PlayerFlashlight[] torches = forestPlayer.GetComponentsInChildren<PlayerFlashlight>(true);
+            Assert.AreEqual(1, torches.Length, "The forest's player must carry exactly one torch.");
+            Assert.AreSame(forestPlayer.transform.Find("CameraPivot"), torches[0].transform.parent, "The torch must hang on the camera pivot.");
+            Assert.AreEqual(0, torches[0].transform.childCount, "The torch's object must hold nothing else of the rig.");
+            List<string> actual = DescribeRig(forestPlayer, torches[0].transform);
 
             var problems = new List<string>();
             foreach (string line in expected)
@@ -415,12 +428,15 @@ namespace Gamex.Tests.Forest
             Assert.AreEqual("MainCamera", forestPlayer.transform.Find("CameraPivot").tag, "The player camera must be the main camera.");
         }
 
-        // One line per fact about the rig, so two rigs can be compared as sets and every difference is named.
-        static List<string> DescribeRig(GameObject player)
+        // One line per fact about the rig, so two rigs can be compared as sets and every difference is named. The part
+        // <paramref name="leaveOut"/> (the forest's torch) and everything below it are not described.
+        static List<string> DescribeRig(GameObject player, Transform leaveOut)
         {
             var lines = new List<string>();
             foreach (Transform part in player.GetComponentsInChildren<Transform>(true))
             {
+                if (leaveOut != null && part.IsChildOf(leaveOut))
+                    continue;
                 string path = part == player.transform ? "Player" : "Player/" + AnimationUtility.CalculateTransformPath(part, player.transform);
                 lines.Add($"{path}: tag {part.tag}, layer {part.gameObject.layer}, active {part.gameObject.activeSelf}");
                 // The root stands at each scene's own spawn point; everything below it must sit the same.

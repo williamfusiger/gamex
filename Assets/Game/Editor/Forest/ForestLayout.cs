@@ -969,10 +969,11 @@ namespace Gamex.EditorTools
             };
         }
 
-        // The backlit view faces where the default preset's key light comes from (section 8.2).
+        // The backlit view faces where the inspect preset's key light comes from (section 8.2). Not the scene's default preset: the
+        // planner keeps young firs out of the viewpoints' frames, so a preset switch must not move the plan (N1).
         static float KeyLightSourceBearing()
         {
-            ForestLightingPresets.Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Default);
+            ForestLightingPresets.Preset preset = ForestLightingPresets.Get(ForestLightingPresets.Inspect);
             return (preset != null ? preset.keyBearing : 135f) + 180f;
         }
 

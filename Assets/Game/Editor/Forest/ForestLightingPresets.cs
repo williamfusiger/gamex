@@ -1,18 +1,30 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
 
 namespace Gamex.EditorTools
 {
     /// <summary>
-    /// The numbers behind each lighting preset of the forest scene. They are starting values: none has
-    /// been judged in a render yet. <see cref="ForestLighting"/> turns a preset into a volume profile and
-    /// a key light; the audit and the capture viewpoints read the same record, so a retuned value cannot
-    /// drift away from what is checked.
+    /// The numbers behind each lighting preset of the forest scene, each tuned on renders (OvercastMist in the M2 to D2
+    /// reviews, Night in N1). <see cref="ForestLighting"/> turns a preset into a volume profile and a key light; the audit
+    /// and the capture viewpoints read the same record, so a retuned value cannot drift away from what is checked.
     /// </summary>
     public static class ForestLightingPresets
     {
-        public const string Default = "OvercastMist";
-        public static readonly string[] Names = { "OvercastMist" };   // M5 appends the presets of Appendix C
+        /// <summary>
+        /// The preset a scene build activates. N1 (build/issues/N1-night.md): night is the game's main mood, so the forest is built
+        /// at night; OvercastMist stays in the scene beside it (Gamex/Forest/Preset/Overcast Mist, or -forestPreset OvercastMist).
+        /// </summary>
+        public const string Default = "Night";
+
+        /// <summary>
+        /// The daylight preset that judges assets rather than mood: kit turntables and LOD sheets (the inspect profile and its key
+        /// light), the probe, and the bearing of the backlit viewpoint (which the layout's planner reads, so the plan does not move
+        /// when the scene's default preset changes).
+        /// </summary>
+        public const string Inspect = "OvercastMist";
+
+        public static readonly string[] Names = { "OvercastMist", "Night" };   // the other presets of Appendix C (HazySun, Dusk) are not built
 
         /// <summary>The values of section 8.2. Read-only for everyone outside WP4.</summary>
         public sealed class Preset
@@ -24,7 +36,13 @@ namespace Gamex.EditorTools
             public float shadowDistance; public int cascades; public Vector3 cascadeSplits;
             public float fogMeanFreePath, fogBaseHeight, fogMaximumHeight, fogAnisotropy, fogDepthExtent; public Color fogAlbedo; public bool fogHighQuality;
             public bool fixedExposure; public float exposureFixed, exposureMin, exposureMax, exposureCompensation;
+            // Automatic exposure only. The metering and the histogram band default to what every preset used before N1.
+            public MeteringMode exposureMetering = MeteringMode.CenterWeighted;
+            public float exposureMaskRadius = 0.3f;    // ProceduralMask: radius of the metered disc, a fraction of the screen
+            public Vector2 exposureHistogram = new Vector2(40f, 90f);
             public float whiteBalanceTemperature, saturation, contrast, bloomIntensity, grainIntensity, vignetteIntensity; public string grainType;
+            // Lift Gamma Gain's gamma (the luminance channel, w): above 0 it raises the dark tones. 0 adds no override (N1).
+            public float shadowGamma;
         }
 
         /// <summary>
@@ -40,6 +58,8 @@ namespace Gamex.EditorTools
             {
                 case "OvercastMist":
                     return OvercastMist();
+                case "Night":
+                    return Night();
                 default:
                     // Names and this switch are edited together; a name without values must not look like a missing sky.
                     throw new InvalidOperationException($"Lighting preset '{name}' is listed in Names but has no values.");
@@ -125,6 +145,78 @@ namespace Gamex.EditorTools
             grainType = "Thin1",
             grainIntensity = 0.10f,
             vignetteIntensity = 0.20f,
+        };
+
+        // N1 (build/issues/N1-night.md): a moonlit night in mist, the main mood of the game. The player carries a torch
+        // (PlayerFlashlight: 300 lm, ForestFlashlight), and the night is built around it. Without the torch the trunks stand black
+        // against mist that glows faintly with the moon, and the trail and the floor are barely readable for the first ten metres;
+        // with it, the beam lights what it falls on and carries 20 to 30 m before the mist takes it. Starting values: spec
+        // Appendix C.1 (written for the sparse forest with long mist); every change below was judged on renders.
+        static Preset Night() => new Preset
+        {
+            name = "Night",
+            // Moonless, so the moon's light is not counted twice; the key light is the moon.
+            skyId = "qwantani_night_puresky",
+            // The spec's 0.06 lux left the floor under the stand black (no probe bake: the sky's light is the only light there).
+            // 0.1 lux makes the trail's ruts and the ferns barely readable for the first metres without the torch.
+            skyLux = 0.1f,
+            skyRotation = 0f,
+
+            // A moon of about full-moon brightness, slightly warm in itself (the cold look is the grading's).
+            keyLux = 0.3f,
+            keyTemperature = 4100f,
+            keyAngularDiameter = 0.52f,
+            // The moon lights the mist twice as strongly as physics would: the mist's glow is what the trunks stand against.
+            keyVolumetricDimmer = 2f,
+            keyElevation = 50f,
+            keyBearing = 135f,
+
+            // As OvercastMist (M3 knob 2): the cascades cost the same at night.
+            shadowDistance = 50f,
+            cascades = 3,
+            cascadeSplits = new Vector3(0.12f, 0.35f, 0.70f),
+
+            // Longer than the day's 20 m, so the beam has 20 to 30 m to work with: a grey card (albedo 0.25) in the hot spot
+            // reads 0.3 to 0.5 at 20 to 30 m, against 0.03 to 0.08 without the torch (section 3). At 50 to 55 m, where every
+            // class is culled, the mist leaves exp(-50 / 30) = 19 % of a silhouette's contrast against a faint glow.
+            // Forward scattering as the day's: at 0.2 the light in the mist right in front of the torch hid what it lit.
+            fogMeanFreePath = 30f,
+            fogBaseHeight = 18f,
+            fogMaximumHeight = 100f,
+            fogAnisotropy = 0.6f,
+            fogDepthExtent = 55f,
+            fogAlbedo = new Color(0.88f, 0.92f, 1.0f),
+            fogHighQuality = false,
+
+            // Automatic, like the eye. Without the torch the meter asks for far less than the lower limit and the limit holds the
+            // frame there: -1.2 EV, with the shadow gamma below, is the torchless look (open ground's 0.33 lux is neutral at
+            // -3.3 EV; the floor under the stand gets a fraction of that). With the torch the meter reads a wide disc in the middle
+            // of the screen, where the beam's hot spot falls, and exposes for what the beam lights: a fir at arm's length keeps its
+            // needles instead of going white, and a far hot spot is brought up. Switching the torch off leaves the player blind for
+            // a moment while the exposure falls back (HDRP's default adaptation, 1 EV a second).
+            fixedExposure = false,
+            exposureMin = -1.2f,
+            exposureMax = 10f,
+            exposureCompensation = 0.5f,
+            exposureFixed = -1f,
+            exposureMetering = MeteringMode.ProceduralMask,
+            exposureMaskRadius = 0.45f,
+            exposureHistogram = new Vector2(40f, 98f),
+            // A torch-lit fir at 1.5 m is some twelve stops brighter than the moonlit forest around it. Exposed for the fir, ACES's
+            // toe crushed everything outside the beam to black (57 to 82 % of the frame below 2/255 in eight of the 32 views, which
+            // the capture's black-frame check rejects, rightly: the forest around the light must still be there). A gamma of +0.25
+            // on the dark tones keeps the trunks and the mist around the beam faintly visible (crushed 0 to 38 % of the frame, the
+            // most at rock_close; +0.2 left that view at 49.6 %, a hair under the limit) and leaves the lit part as it was; without
+            // the torch it is part of the night's look, and the lower exposure limit was raised with it (section 3).
+            shadowGamma = 0.25f,
+
+            whiteBalanceTemperature = -22f,
+            saturation = -30f,
+            contrast = 10f,
+            bloomIntensity = 0.15f,
+            grainType = "Medium1",
+            grainIntensity = 0.30f,
+            vignetteIntensity = 0.35f,
         };
     }
 }

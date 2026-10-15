@@ -42,6 +42,17 @@ namespace Gamex.Diagnostics
     ///                                          after every frame, waited for before frame n later begins). 0 = off
     ///                                          (default). Without it, a focused window on macOS hands the drawables back in bursts
     ///                                          with vsync off, and single frames read 2 ms or 30 ms while the mean is the real cost.
+    ///   -forestMeasureFlashlight on|off        N1: the player's torch (Player/CameraPivot/Flashlight) rides on the measurement camera at
+    ///                                          the hand's pose, switched on as the game starts it (on, the default), or stays dark with
+    ///                                          the switched-off rig (off). Before N1 the scene had no torch.
+    ///   -forestMeasurePreset &lt;name&gt;         N1: activate this lighting preset of the scene (Lighting/Preset_&lt;name&gt;) first
+    ///   -forestMeasureTorchShadowRes &lt;px&gt;   N1: the torch's shadow map resolution for this run (A/B of the shadow settings)
+    ///   -forestMeasureTorchShadows off         N1: the torch casts no shadows in this run
+    ///   -forestMeasureTorchRange &lt;m&gt;         N1: the torch's range (and so its shadow map's far plane) for this run
+    ///   -forestMeasureTorchVolumetric off      N1: the torch does not light the mist in this run
+    ///   -forestMeasureTorchAB                  N1: paired measurement, free of the drift between runs: every view is recorded three
+    ///                                          times in a row, the torch off ("&lt;view&gt;|off"), on ("|on") and on without shadows
+    ///                                          ("|noshadow"), each after its own warm-up. The worst-view figures cover the "|on" rows.
     /// </summary>
     public sealed class ForestFrameHarness : MonoBehaviour
     {
@@ -102,6 +113,10 @@ namespace Gamex.Diagnostics
             public int vSyncCount, targetFrameRate;
             public bool frameTimingFeatureEnabled;
             public string residentDrawer;
+            public string flashlight, preset;
+            public int torchShadowResolution;
+            public bool torchShadows, torchVolumetric;
+            public float torchRange;
             public int prewarmFrames, warmupFrames, recordedFrames, paceLag, denseFactor, denseCopies;
             public string worstViewByMedian, worstViewByP95;
             public float worstMedianMs, worstP95Ms;
@@ -207,7 +222,38 @@ namespace Gamex.Diagnostics
             Camera playerCamera = player != null ? player.GetComponentInChildren<Camera>(true) : null;
             if (playerCamera == null) { Fail("the scene has no Player root with a camera"); yield break; }
             Camera camera = CreateCamera(playerCamera);
+            string torchMode = Value("-forestMeasureFlashlight", "on");
+            Transform torch = playerCamera.transform.Find("Flashlight");
+            if (torch != null && torchMode == "on")
+            {
+                // Keeps its local pose (the hand) and its own component, which follows the new parent with its lag.
+                torch.SetParent(camera.transform, false);
+                var light = torch.GetComponent<Light>();
+                if (light != null) light.enabled = true;
+            }
+            result.flashlight = torch == null ? "none" : torchMode == "on" ? "on" : "off";
+            if (torch != null)
+            {
+                var torchLight = torch.GetComponent<Light>();
+                var torchData = torch.GetComponent<HDAdditionalLightData>();
+                int resolution = IntValue("-forestMeasureTorchShadowRes", 0);
+                if (resolution > 0 && torchData != null) torchData.SetShadowResolution(resolution);
+                if (Value("-forestMeasureTorchShadows", "on") == "off" && torchLight != null) torchLight.shadows = LightShadows.None;
+                float range = IntValue("-forestMeasureTorchRange", 0);
+                if (range > 0f && torchLight != null) torchLight.range = range;
+                if (Value("-forestMeasureTorchVolumetric", "on") == "off" && torchData != null) torchData.affectsVolumetric = false;
+                result.torchRange = torchLight != null ? torchLight.range : 0f;
+                result.torchVolumetric = torchData != null && torchData.affectsVolumetric;
+                result.torchShadows = torchLight != null && torchLight.shadows != LightShadows.None;
+                result.torchShadowResolution = torchData != null && torchData.shadowResolution.useOverride ? torchData.shadowResolution.@override : -1;
+                Debug.Log($"Forest harness: torch shadows {result.torchShadows}, resolution {result.torchShadowResolution}, update {torchData?.shadowUpdateMode}");
+            }
             player.SetActive(false);
+
+            string preset = Value("-forestMeasurePreset", null);
+            if (!string.IsNullOrEmpty(preset) && !UsePreset(preset)) { Fail($"the scene has no lighting preset Lighting/Preset_{preset}"); yield break; }
+            result.preset = ActivePreset();
+            Debug.Log($"Forest harness: preset {result.preset}, flashlight {result.flashlight}");
 
             int dense = IntValue("-forestMeasureDense", 1);
             if (dense > 1)
@@ -257,16 +303,31 @@ namespace Gamex.Diagnostics
             var timings = new FrameTiming[1];
             try
             {
+                Light pairedLight = HasFlag("-forestMeasureTorchAB") && torch != null && torch.parent == camera.transform ? torch.GetComponent<Light>() : null;
+                string[] states = pairedLight != null ? new[] { "off", "on", "noshadow" } : new string[] { null };
                 foreach (Transform viewpoint in viewpoints)
                 {
-                    Cut(camera, viewpoint);
-                    for (int i = 0; i < warmup; i++)
-                        yield return null;
-                    ViewResult view = null;
-                    yield return Record(viewpoint.name, viewpoint, frames, recorders, timings, r => view = r);
-                    result.views.Add(view);
-                    Debug.Log(string.Format(CultureInfo.InvariantCulture, "Forest harness: {0} median {1:0.00} ms p95 {2:0.00} ms (gpu median {3:0.00}, cpu median {4:0.00}, {5} timing frames), triangles {6}",
-                        view.id, view.medianMs, view.p95Ms, view.gpuMedianMs, view.cpuMedianMs, view.frameTimingFrames, view.trianglesWorst));
+                    foreach (string state in states)
+                    {
+                        if (pairedLight != null)
+                        {
+                            pairedLight.enabled = state != "off";
+                            pairedLight.shadows = state == "noshadow" ? LightShadows.None : LightShadows.Soft;
+                        }
+                        Cut(camera, viewpoint);
+                        for (int i = 0; i < warmup; i++)
+                            yield return null;
+                        ViewResult view = null;
+                        yield return Record(state == null ? viewpoint.name : viewpoint.name + "|" + state, viewpoint, frames, recorders, timings, r => view = r);
+                        result.views.Add(view);
+                        Debug.Log(string.Format(CultureInfo.InvariantCulture, "Forest harness: {0} median {1:0.00} ms p95 {2:0.00} ms (gpu median {3:0.00}, cpu median {4:0.00}, {5} timing frames), triangles {6}",
+                            view.id, view.medianMs, view.p95Ms, view.gpuMedianMs, view.cpuMedianMs, view.frameTimingFrames, view.trianglesWorst));
+                    }
+                }
+                if (pairedLight != null)
+                {
+                    pairedLight.enabled = true;
+                    pairedLight.shadows = LightShadows.Soft;
                 }
 
                 if (HasFlag("-forestMeasureFloor"))
@@ -299,6 +360,7 @@ namespace Gamex.Diagnostics
             foreach (ViewResult view in result.views)
             {
                 if (view.id.StartsWith("floor_", StringComparison.Ordinal)) continue;
+                if (view.id.Contains("|") && !view.id.EndsWith("|on", StringComparison.Ordinal)) continue;
                 if (view.medianMs > result.worstMedianMs) { result.worstMedianMs = view.medianMs; result.worstViewByMedian = view.id; }
                 if (view.p95Ms > result.worstP95Ms) { result.worstP95Ms = view.p95Ms; result.worstViewByP95 = view.id; }
             }
@@ -425,6 +487,26 @@ namespace Gamex.Diagnostics
                 }
             }
             return copies;
+        }
+
+        static bool UsePreset(string preset)
+        {
+            GameObject lighting = FindRoot("Lighting");
+            Transform target = lighting != null ? lighting.transform.Find("Preset_" + preset) : null;
+            if (target == null) return false;
+            foreach (Transform child in lighting.transform)
+                if (child != target && child.name.StartsWith("Preset_", StringComparison.Ordinal)) child.gameObject.SetActive(false);
+            target.gameObject.SetActive(true);
+            return true;
+        }
+
+        static string ActivePreset()
+        {
+            GameObject lighting = FindRoot("Lighting");
+            if (lighting == null) return "";
+            foreach (Transform child in lighting.transform)
+                if (child.gameObject.activeSelf && child.name.StartsWith("Preset_", StringComparison.Ordinal)) return child.name.Substring("Preset_".Length);
+            return "";
         }
 
         static GameObject FindRoot(string name)

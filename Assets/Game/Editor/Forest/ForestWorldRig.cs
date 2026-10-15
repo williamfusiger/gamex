@@ -192,8 +192,9 @@ namespace Gamex.EditorTools
         }
 
         /// <summary>
-        /// A copy of the greybox player (GreyboxSceneBuilder.BuildPlayer, which is private). A test
-        /// compares the two rigs, so this copy cannot drift.
+        /// A copy of the greybox player (GreyboxSceneBuilder.BuildPlayer, which is private), plus the torch the player carries at
+        /// night (N1: CameraPivot/Flashlight, ForestFlashlight). A test compares the two rigs, so this copy cannot drift; the torch
+        /// is the one difference it allows.
         /// </summary>
         public static GameObject BuildPlayer(Vector3 position, float yaw)                // returns the Player root
         {
@@ -217,6 +218,7 @@ namespace Gamex.EditorTools
             pivot.gameObject.AddComponent<AudioListener>();
 
             Transform holdPoint = Child("HoldPoint", pivot, new Vector3(0.35f, -0.3f, 0.7f));
+            ForestFlashlight.Build(pivot);
 
             root.AddComponent<PlayerInputReader>();
             var controller = root.AddComponent<PlayerController>();
