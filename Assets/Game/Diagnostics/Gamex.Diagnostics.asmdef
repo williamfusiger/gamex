@@ -1,0 +1,9 @@
+{
+    "name": "Gamex.Diagnostics",
+    "rootNamespace": "Gamex.Diagnostics",
+    "references": [
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime"
+    ],
+    "autoReferenced": false
+}

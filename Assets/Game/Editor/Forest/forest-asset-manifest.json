@@ -1,0 +1,2482 @@
+[
+ {
+  "id": "forest_leaves_04",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 0: base needle and leaf litter",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 0,
+  "tileSizeMeters": 1.73,
+  "note": "The scan covers 1.5 m (Poly Haven dimensions 1500 x 1500 mm). Tiled at 1.73 m since review 2 of the M2 captures (2.0 m in review 1, 1.5 m in the spec): at 2.0 m it repeated in step with the gravel and the dry needles (both 2.0 m), and where those layers blend the repeats reinforced each other into one weave. The eight tile sizes are now pairwise different and none is a simple multiple of another; needles and twigs are drawn 1.15 times life size.",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_04/forest_leaves_04_diff_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_04/forest_leaves_04__basecolor.jpg",
+    "bytes": 1539210,
+    "md5": "a6cfde9e6846f5aa27bcbe0a58fe9907",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forest_leaves_04/forest_leaves_04_nor_gl_2k.png",
+    "relPath": "PolyHaven/forest_leaves_04/forest_leaves_04__normal.png",
+    "bytes": 24187753,
+    "md5": "b218e95118db6c855144da3702653032",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_04/forest_leaves_04_arm_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_04/Source~/forest_leaves_04__arm.jpg",
+    "bytes": 1292204,
+    "md5": "5557c84b6b0ed29b934ddaf154bc8438",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_04/forest_leaves_04_disp_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_04/Source~/forest_leaves_04__height.jpg",
+    "bytes": 416672,
+    "md5": "1777c60f9d0aa03c92929280b1bbee17",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "forest_ground_06",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 1: dark humus under firs and at trunk bases",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 1,
+  "tileSizeMeters": 2.11,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_06/forest_ground_06_diff_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_06/forest_ground_06__basecolor.jpg",
+    "bytes": 3375916,
+    "md5": "6891c030533e7af2abd81cb9aecb1eb9",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forest_ground_06/forest_ground_06_nor_gl_2k.png",
+    "relPath": "PolyHaven/forest_ground_06/forest_ground_06__normal.png",
+    "bytes": 24274261,
+    "md5": "f84cd63171644a868b9456c7f807e0c0",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_06/forest_ground_06_arm_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_06/Source~/forest_ground_06__arm.jpg",
+    "bytes": 4209470,
+    "md5": "592747c9d3170231d2e5c64b689dba6d",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_06/forest_ground_06_disp_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_06/Source~/forest_ground_06__height.jpg",
+    "bytes": 1846804,
+    "md5": "462a8c4a389fa4faea8f7272e505f282",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "forest_leaves_02",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 2: mossy ground around rocks, logs and stumps",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 2,
+  "tileSizeMeters": 3.0,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_diffuse_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_02/forest_leaves_02__basecolor.jpg",
+    "bytes": 1668009,
+    "md5": "b7837ba1c51fb0e11af36d6b4e225c20",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forest_leaves_02/forest_leaves_02_nor_gl_2k.png",
+    "relPath": "PolyHaven/forest_leaves_02/forest_leaves_02__normal.png",
+    "bytes": 10708761,
+    "md5": "cce2a8fd9454483a17f65b3cfc832725",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_arm_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_02/Source~/forest_leaves_02__arm.jpg",
+    "bytes": 1066850,
+    "md5": "4b476f0e4b633b2aef621afda5209baf",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_disp_2k.jpg",
+    "relPath": "PolyHaven/forest_leaves_02/Source~/forest_leaves_02__height.jpg",
+    "bytes": 332158,
+    "md5": "13830bbe7693f4cf7f0e3c0958d3f211",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "rocky_trail",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 3: gravel in the trail ruts and the gully bed",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 3,
+  "tileSizeMeters": 2.0,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail/rocky_trail_diff_2k.jpg",
+    "relPath": "PolyHaven/rocky_trail/rocky_trail__basecolor.jpg",
+    "bytes": 4208713,
+    "md5": "7327bf7d48d33688fb12465222ee3f22",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rocky_trail/rocky_trail_nor_gl_2k.png",
+    "relPath": "PolyHaven/rocky_trail/rocky_trail__normal.png",
+    "bytes": 27900659,
+    "md5": "61e6eed2bb6f00efab7c236ec0d9a990",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail/rocky_trail_arm_2k.jpg",
+    "relPath": "PolyHaven/rocky_trail/Source~/rocky_trail__arm.jpg",
+    "bytes": 3986946,
+    "md5": "97daa9ca7cc355d7fe3389a1b555a407",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail/rocky_trail_disp_2k.jpg",
+    "relPath": "PolyHaven/rocky_trail/Source~/rocky_trail__height.jpg",
+    "bytes": 1244065,
+    "md5": "a284765925e99896b088b791e4b1b0ad",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "forest_ground_04",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 4: stony soil on slopes and under stumps",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 4,
+  "tileSizeMeters": 3.15,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_04/forest_ground_04_diff_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_04/forest_ground_04__basecolor.jpg",
+    "bytes": 4529321,
+    "md5": "f6ce9c8af4316c2627a4b3fbab8ad944",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forest_ground_04/forest_ground_04_nor_gl_2k.png",
+    "relPath": "PolyHaven/forest_ground_04/forest_ground_04__normal.png",
+    "bytes": 9987026,
+    "md5": "c7bf8a98de1dee39cb6028e06b8bdd37",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_04/forest_ground_04_arm_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_04/Source~/forest_ground_04__arm.jpg",
+    "bytes": 3418726,
+    "md5": "c688030cc91fbaab71cbc71fc6b280fe",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_04/forest_ground_04_disp_2k.jpg",
+    "relPath": "PolyHaven/forest_ground_04/Source~/forest_ground_04__height.jpg",
+    "bytes": 696276,
+    "md5": "2d342b36619dc1a4e4afcd3bfc256dfe",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "mud_forest",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 5: wet mud in the hollow and on gully banks",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 5,
+  "tileSizeMeters": 2.35,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mud_forest/mud_forest_diff_2k.jpg",
+    "relPath": "PolyHaven/mud_forest/mud_forest__basecolor.jpg",
+    "bytes": 3683329,
+    "md5": "e78c6eae192daae3d00a677a588d1739",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/mud_forest/mud_forest_nor_gl_2k.png",
+    "relPath": "PolyHaven/mud_forest/mud_forest__normal.png",
+    "bytes": 24357908,
+    "md5": "e6132199d99d207825f9eb9e846ebadd",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mud_forest/mud_forest_arm_2k.jpg",
+    "relPath": "PolyHaven/mud_forest/Source~/mud_forest__arm.jpg",
+    "bytes": 3326167,
+    "md5": "5e46adb654cda4ca023f1e983a363a71",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mud_forest/mud_forest_disp_2k.jpg",
+    "relPath": "PolyHaven/mud_forest/Source~/mud_forest__height.jpg",
+    "bytes": 1623075,
+    "md5": "b90acf7295a2de413339fff7e34cbaf9",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "mossy_rock",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 6: rock on steep faces",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 6,
+  "tileSizeMeters": 3.37,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_rock/mossy_rock_diff_2k.jpg",
+    "relPath": "PolyHaven/mossy_rock/mossy_rock__basecolor.jpg",
+    "bytes": 4535360,
+    "md5": "8e55bbeeef1db0d2d0cae85515812c46",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/mossy_rock/mossy_rock_nor_gl_2k.png",
+    "relPath": "PolyHaven/mossy_rock/mossy_rock__normal.png",
+    "bytes": 8716359,
+    "md5": "b5385cc9f6239f4720a43e0acbed6015",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_rock/mossy_rock_arm_2k.jpg",
+    "relPath": "PolyHaven/mossy_rock/Source~/mossy_rock__arm.jpg",
+    "bytes": 3799947,
+    "md5": "7aa8634ba2202439a413113c9e617b83",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_rock/mossy_rock_disp_2k.jpg",
+    "relPath": "PolyHaven/mossy_rock/Source~/mossy_rock__height.jpg",
+    "bytes": 644550,
+    "md5": "d22857010ae3d07e42c5548126cf386c",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "forrest_ground_03",
+  "source": "polyhaven",
+  "kind": "texture",
+  "role": "Terrain layer 7: pale dry needles under tall firs and in the clearing",
+  "resolution": "2k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "terrainLayer": 7,
+  "tileSizeMeters": 2.43,
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forrest_ground_03/forrest_ground_03_diff_2k.jpg",
+    "relPath": "PolyHaven/forrest_ground_03/forrest_ground_03__basecolor.jpg",
+    "bytes": 3522953,
+    "md5": "605bfa541b0d406bcf88a16a8c82b821",
+    "map": "basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forrest_ground_03/forrest_ground_03_nor_gl_2k.png",
+    "relPath": "PolyHaven/forrest_ground_03/forrest_ground_03__normal.png",
+    "bytes": 11122971,
+    "md5": "579f9dda8798ae01373bf6775077f994",
+    "map": "normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forrest_ground_03/forrest_ground_03_arm_2k.jpg",
+    "relPath": "PolyHaven/forrest_ground_03/Source~/forrest_ground_03__arm.jpg",
+    "bytes": 1249511,
+    "md5": "905e52f65336525f23a64529d42b5018",
+    "map": "arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forrest_ground_03/forrest_ground_03_disp_2k.jpg",
+    "relPath": "PolyHaven/forrest_ground_03/Source~/forrest_ground_03__height.jpg",
+    "bytes": 1220484,
+    "md5": "9f4313598fa4a11a988607cd7c2b34f5",
+    "map": "height"
+   }
+  ]
+ },
+ {
+  "id": "overcast_soil_puresky",
+  "source": "polyhaven",
+  "kind": "hdri",
+  "role": "Sky for the default preset OvercastMist",
+  "resolution": "4k",
+  "milestone": "M1",
+  "license": "CC0-1.0",
+  "preset": "OvercastMist",
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/overcast_soil_puresky_4k.hdr",
+    "relPath": "PolyHaven/overcast_soil_puresky/overcast_soil_puresky__sky.hdr",
+    "bytes": 16949123,
+    "md5": "8c05e24908d99a6c4c5c1a63d753df3f",
+    "map": "sky"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/exr/1k/overcast_soil_puresky_1k.exr",
+    "relPath": "PolyHaven/overcast_soil_puresky/Source~/overcast_soil_puresky__sky1k.exr",
+    "bytes": 5028556,
+    "md5": "bbc9a5bbbbdf75efca416094df31799d",
+    "map": "skyCalibration"
+   }
+  ]
+ },
+ {
+  "id": "rock_moss_set_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Six closed mossy boulders, 0.63 to 1.11 m above their pivot plane: crouch cover, clusters, boulder field, north outcrop",
+  "resolution": "4k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 4096,
+  "note": "The AO channel (red) of the arm map does not fit the UVs of the FBX: under 7 to 33 % of each rock's surface it is zero, and a third of its islands lie where no triangle has UVs (measured at M2). Roughness, base colour and normal do fit. The packer writes full AO into this mask (ForestTexturePacker.UnusableAo).",
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/4k/rock_moss_set_01/rock_moss_set_01_4k.fbx",
+    "relPath": "PolyHaven/rock_moss_set_01/rock_moss_set_01.fbx",
+    "bytes": 2652988,
+    "md5": "9f1aaee218ca614f9ed31aa0f3eba448",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_moss_set_01/rock_moss_set_01_diff_4k.jpg",
+    "relPath": "PolyHaven/rock_moss_set_01/rock_moss_set_01__basecolor.jpg",
+    "bytes": 2530683,
+    "md5": "155da18d6f87bd29a809ab9bfb6db019",
+    "map": "rock_moss_set_01:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/4k/rock_moss_set_01/rock_moss_set_01_nor_gl_4k.png",
+    "relPath": "PolyHaven/rock_moss_set_01/rock_moss_set_01__normal.png",
+    "bytes": 97934041,
+    "md5": "e941a7ef1bd55bc26bff376501b5b3a1",
+    "map": "rock_moss_set_01:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_moss_set_01/rock_moss_set_01_arm_4k.jpg",
+    "relPath": "PolyHaven/rock_moss_set_01/Source~/rock_moss_set_01__arm.jpg",
+    "bytes": 1149046,
+    "md5": "8f854183af172bcaf2f3b1015e38c80d",
+    "map": "rock_moss_set_01:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "rock_moss_set_01",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/rock_moss_set_01/rock_moss_set_01__basecolor.jpg",
+     "normal": "PolyHaven/rock_moss_set_01/rock_moss_set_01__normal.png",
+     "arm": "PolyHaven/rock_moss_set_01/Source~/rock_moss_set_01__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "rock_moss_set_01_rock01",
+    "boundsMin": [
+     -1.114,
+     -0.6566,
+     -1.701
+    ],
+    "boundsMax": [
+     1.1236,
+     0.8161,
+     1.6678
+    ],
+    "triangles": 11000,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 11000,
+      "vertices": 6078,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_01_rock02",
+    "boundsMin": [
+     -1.2731,
+     -0.4656,
+     -1.6444
+    ],
+    "boundsMax": [
+     1.3823,
+     0.7964,
+     1.6193
+    ],
+    "triangles": 10996,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 10996,
+      "vertices": 6192,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_01_rock03",
+    "boundsMin": [
+     -1.018,
+     -0.4109,
+     -1.0236
+    ],
+    "boundsMax": [
+     1.0906,
+     0.6888,
+     1.056
+    ],
+    "triangles": 5000,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 5000,
+      "vertices": 2741,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_01_rock04",
+    "boundsMin": [
+     -0.9503,
+     -0.661,
+     -0.8874
+    ],
+    "boundsMax": [
+     1.1774,
+     1.1073,
+     1.0773
+    ],
+    "triangles": 10589,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 10589,
+      "vertices": 5691,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_01_rock05",
+    "boundsMin": [
+     -0.8607,
+     -0.5726,
+     -1.3509
+    ],
+    "boundsMax": [
+     0.9567,
+     0.6329,
+     1.6477
+    ],
+    "triangles": 16548,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 16548,
+      "vertices": 8538,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_01_rock06",
+    "boundsMin": [
+     -1.2008,
+     -0.5281,
+     -1.4801
+    ],
+    "boundsMax": [
+     0.9252,
+     0.7338,
+     1.2772
+    ],
+    "triangles": 8994,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_01",
+      "triangles": 8994,
+      "vertices": 4748,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "rock_moss_set_02",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Seven closed mossy rocks, 0.43 to 1.05 m above their pivot plane: trail shoulder, cluster fill",
+  "resolution": "4k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 4096,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/4k/rock_moss_set_02/rock_moss_set_02_4k.fbx",
+    "relPath": "PolyHaven/rock_moss_set_02/rock_moss_set_02.fbx",
+    "bytes": 2106892,
+    "md5": "f0fbeff0d69f6d6ffd21c7981d2f7cf3",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_moss_set_02/rock_moss_set_02_diff_4k.jpg",
+    "relPath": "PolyHaven/rock_moss_set_02/rock_moss_set_02__basecolor.jpg",
+    "bytes": 2893305,
+    "md5": "b16253d14fa2f3b23f182767779cb775",
+    "map": "rock_moss_set_02:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/4k/rock_moss_set_02/rock_moss_set_02_nor_gl_4k.png",
+    "relPath": "PolyHaven/rock_moss_set_02/rock_moss_set_02__normal.png",
+    "bytes": 101221050,
+    "md5": "761bedabdd3266bc5d2ca5a4f3c17476",
+    "map": "rock_moss_set_02:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_moss_set_02/rock_moss_set_02_arm_4k.jpg",
+    "relPath": "PolyHaven/rock_moss_set_02/Source~/rock_moss_set_02__arm.jpg",
+    "bytes": 1749485,
+    "md5": "93947dd22eee6fdabee378d2b2e460e8",
+    "map": "rock_moss_set_02:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "rock_moss_set_02",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/rock_moss_set_02/rock_moss_set_02__basecolor.jpg",
+     "normal": "PolyHaven/rock_moss_set_02/rock_moss_set_02__normal.png",
+     "arm": "PolyHaven/rock_moss_set_02/Source~/rock_moss_set_02__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "rock_moss_set_02_rock08",
+    "boundsMin": [
+     -0.5346,
+     -0.011,
+     -0.4441
+    ],
+    "boundsMax": [
+     0.6717,
+     0.5177,
+     0.5395
+    ],
+    "triangles": 8000,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 8000,
+      "vertices": 4154,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock09",
+    "boundsMin": [
+     -0.778,
+     -0.0379,
+     -0.5261
+    ],
+    "boundsMax": [
+     0.851,
+     0.572,
+     0.4854
+    ],
+    "triangles": 7894,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 7894,
+      "vertices": 4109,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock12",
+    "boundsMin": [
+     -0.758,
+     -0.0322,
+     -0.7263
+    ],
+    "boundsMax": [
+     0.8215,
+     0.7038,
+     0.7171
+    ],
+    "triangles": 7999,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 7999,
+      "vertices": 4317,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock13",
+    "boundsMin": [
+     -1.0845,
+     -0.659,
+     -1.1344
+    ],
+    "boundsMax": [
+     1.0069,
+     0.5974,
+     0.0039
+    ],
+    "triangles": 7928,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 7928,
+      "vertices": 4189,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock10",
+    "boundsMin": [
+     -1.064,
+     -0.0243,
+     -0.7846
+    ],
+    "boundsMax": [
+     1.1389,
+     0.7441,
+     0.7671
+    ],
+    "triangles": 8000,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 8000,
+      "vertices": 4162,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock11",
+    "boundsMin": [
+     -0.9856,
+     -0.2573,
+     -0.9537
+    ],
+    "boundsMax": [
+     0.9681,
+     1.0532,
+     0.5752
+    ],
+    "triangles": 8000,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 8000,
+      "vertices": 4230,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "rock_moss_set_02_rock07",
+    "boundsMin": [
+     -0.8922,
+     -0.3192,
+     -0.6125
+    ],
+    "boundsMax": [
+     0.8008,
+     0.4256,
+     0.6026
+    ],
+    "triangles": 9826,
+    "subMeshes": [
+     {
+      "material": "rock_moss_set_02",
+      "triangles": 9826,
+      "vertices": 5173,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "rock_face_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "NOT USED IN VERSION 1. Open one-sided cliff sheet 7.11 x 4.98 (height) x 5.62 m, sloping about 42 degrees; only usable bedded into a bank",
+  "resolution": "4k",
+  "milestone": "M6",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "note": "The FBX holds the glTF mesh scaled 1.435x and re-oriented; bounds here are measured from the FBX. The mesh is an open sheet (886 boundary edges, no back), from the verdant_trail collection (layered blue-grey and orange rock).",
+  "maxTextureSize": 4096,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/4k/rock_face_01/rock_face_01_4k.fbx",
+    "relPath": "PolyHaven/rock_face_01/rock_face_01.fbx",
+    "bytes": 764220,
+    "md5": "582f5664dc46a2f2fe4dc3333329273c",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_face_01/rock_face_01_diff_4k.jpg",
+    "relPath": "PolyHaven/rock_face_01/rock_face_01__basecolor.jpg",
+    "bytes": 11448620,
+    "md5": "ff25dfccab87de72915e1dd59de78216",
+    "map": "rock_face_01:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/4k/rock_face_01/rock_face_01_nor_gl_4k.png",
+    "relPath": "PolyHaven/rock_face_01/rock_face_01__normal.png",
+    "bytes": 63455708,
+    "md5": "84676b15e38022dd9ff4ab0b43ae8c40",
+    "map": "rock_face_01:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_face_01/rock_face_01_arm_4k.jpg",
+    "relPath": "PolyHaven/rock_face_01/Source~/rock_face_01__arm.jpg",
+    "bytes": 9914555,
+    "md5": "2bb97d12098b87741b6930b59291a5d3",
+    "map": "rock_face_01:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "rock_face_01",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/rock_face_01/rock_face_01__basecolor.jpg",
+     "normal": "PolyHaven/rock_face_01/rock_face_01__normal.png",
+     "arm": "PolyHaven/rock_face_01/Source~/rock_face_01__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "rock_face_01",
+    "boundsMin": [
+     -3.4532,
+     -0.0587,
+     -4.728
+    ],
+    "boundsMax": [
+     3.6551,
+     4.9218,
+     0.8963
+    ],
+    "triangles": 20174,
+    "subMeshes": [
+     {
+      "material": "rock_face_01",
+      "triangles": 20174,
+      "vertices": 11106,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "rock_face_02",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "NOT USED IN VERSION 1. Open one-sided cliff sheet 4.87 x 4.73 (height) x 3.47 m, sloping about 54 degrees; only usable bedded into a bank",
+  "resolution": "4k",
+  "milestone": "M6",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "note": "The FBX holds the glTF mesh scaled 1.80x and re-oriented; bounds here are measured from the FBX. The mesh is an open sheet (754 boundary edges, no back), from the verdant_trail collection (layered blue-grey and orange rock).",
+  "maxTextureSize": 4096,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/4k/rock_face_02/rock_face_02_4k.fbx",
+    "relPath": "PolyHaven/rock_face_02/rock_face_02.fbx",
+    "bytes": 1131996,
+    "md5": "85eb558346b79ea62323e0ff0bd4ec40",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_face_02/rock_face_02_diff_4k.jpg",
+    "relPath": "PolyHaven/rock_face_02/rock_face_02__basecolor.jpg",
+    "bytes": 12090498,
+    "md5": "d99d76832eb241ba3a794c360858cb9a",
+    "map": "rock_face_02:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/4k/rock_face_02/rock_face_02_nor_gl_4k.png",
+    "relPath": "PolyHaven/rock_face_02/rock_face_02__normal.png",
+    "bytes": 65132839,
+    "md5": "1f324824d6cd653dfd595f59f1de27bb",
+    "map": "rock_face_02:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/rock_face_02/rock_face_02_arm_4k.jpg",
+    "relPath": "PolyHaven/rock_face_02/Source~/rock_face_02__arm.jpg",
+    "bytes": 10595740,
+    "md5": "b3879ae3c49d75fa0779b78672f79292",
+    "map": "rock_face_02:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "rock_face_02",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/rock_face_02/rock_face_02__basecolor.jpg",
+     "normal": "PolyHaven/rock_face_02/rock_face_02__normal.png",
+     "arm": "PolyHaven/rock_face_02/Source~/rock_face_02__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "rock_face_02",
+    "boundsMin": [
+     -2.8813,
+     -0.0982,
+     -3.2438
+    ],
+    "boundsMax": [
+     1.9892,
+     4.636,
+     0.2291
+    ],
+    "triangles": 29566,
+    "subMeshes": [
+     {
+      "material": "rock_face_02",
+      "triangles": 29566,
+      "vertices": 16396,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fern_02",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Four fern clumps: fern drifts (merged into patch meshes) and rings around scan patches",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/fern_02/fern_02_2k.fbx",
+    "relPath": "PolyHaven/fern_02/fern_02.fbx",
+    "bytes": 223596,
+    "md5": "b0faf5c26baf61032ac5abea4f4ce568",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fern_02/fern_02_diff_2k.jpg",
+    "relPath": "PolyHaven/fern_02/Source~/fern_02__diffuse.jpg",
+    "bytes": 993703,
+    "md5": "ba8bbb9dc9ff55bdc081565cd926d776",
+    "map": "fern_02:diffuse"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fern_02/fern_02_nor_gl_2k.jpg",
+    "relPath": "PolyHaven/fern_02/fern_02__normal.jpg",
+    "bytes": 1365615,
+    "md5": "00936dff4661dc9fe1f2fbe6c000615a",
+    "map": "fern_02:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fern_02/fern_02_arm_2k.jpg",
+    "relPath": "PolyHaven/fern_02/Source~/fern_02__arm.jpg",
+    "bytes": 850856,
+    "md5": "7f7b46e813a3cb4811405191de0ecdce",
+    "map": "fern_02:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png",
+    "relPath": "PolyHaven/fern_02/Source~/fern_02__alpha.png",
+    "bytes": 230089,
+    "md5": "ff18f7e8e869c58eac8f9c7d7c519f4a",
+    "map": "fern_02:alpha"
+   }
+  ],
+  "materials": [
+   {
+    "name": "fern_02",
+    "surface": "foliage",
+    "maps": {
+     "diffuse": "PolyHaven/fern_02/Source~/fern_02__diffuse.jpg",
+     "normal": "PolyHaven/fern_02/fern_02__normal.jpg",
+     "arm": "PolyHaven/fern_02/Source~/fern_02__arm.jpg",
+     "alpha": "PolyHaven/fern_02/Source~/fern_02__alpha.png"
+    },
+    "alphaCutoff": 0.5
+   }
+  ],
+  "objects": [
+   {
+    "name": "fern_02_b",
+    "boundsMin": [
+     -0.5281,
+     -0.0305,
+     -0.4219
+    ],
+    "boundsMax": [
+     0.4616,
+     0.3972,
+     0.4718
+    ],
+    "triangles": 2384,
+    "subMeshes": [
+     {
+      "material": "fern_02",
+      "triangles": 2384,
+      "vertices": 1660,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fern_02_c",
+    "boundsMin": [
+     -0.4299,
+     -0.0288,
+     -0.4173
+    ],
+    "boundsMax": [
+     0.4444,
+     0.3202,
+     0.3479
+    ],
+    "triangles": 2248,
+    "subMeshes": [
+     {
+      "material": "fern_02",
+      "triangles": 2248,
+      "vertices": 1568,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fern_02_a",
+    "boundsMin": [
+     -0.2977,
+     -0.0288,
+     -0.3113
+    ],
+    "boundsMax": [
+     0.2543,
+     0.258,
+     0.3022
+    ],
+    "triangles": 784,
+    "subMeshes": [
+     {
+      "material": "fern_02",
+      "triangles": 784,
+      "vertices": 544,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fern_02_d",
+    "boundsMin": [
+     -0.2908,
+     -0.0136,
+     -0.3521
+    ],
+    "boundsMax": [
+     0.282,
+     0.1995,
+     0.2411
+    ],
+    "triangles": 816,
+    "subMeshes": [
+     {
+      "material": "fern_02",
+      "triangles": 816,
+      "vertices": 565,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "grass_medium_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Grass clumps: tufts in the clearing and on trail shoulders (merged into patch meshes)",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/grass_medium_01/grass_medium_01_2k.fbx",
+    "relPath": "PolyHaven/grass_medium_01/grass_medium_01.fbx",
+    "bytes": 1056796,
+    "md5": "b66bd6a94172d7045ddc39cb9e5a9cf3",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/grass_medium_01/grass_medium_01_diff_2k.jpg",
+    "relPath": "PolyHaven/grass_medium_01/Source~/grass_medium_01__diffuse.jpg",
+    "bytes": 1166527,
+    "md5": "000814eb2149add70695cf71bfb52c4b",
+    "map": "grass_medium_01:diffuse"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/grass_medium_01/grass_medium_01_nor_gl_2k.jpg",
+    "relPath": "PolyHaven/grass_medium_01/grass_medium_01__normal.jpg",
+    "bytes": 3530394,
+    "md5": "7c75ce52a121de1fc00422672584f757",
+    "map": "grass_medium_01:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/grass_medium_01/grass_medium_01_arm_2k.jpg",
+    "relPath": "PolyHaven/grass_medium_01/Source~/grass_medium_01__arm.jpg",
+    "bytes": 2256355,
+    "md5": "a530c693ba3d08be15fcbce33dc5dabe",
+    "map": "grass_medium_01:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/grass_medium_01/grass_medium_01_alpha_2k.png",
+    "relPath": "PolyHaven/grass_medium_01/Source~/grass_medium_01__alpha.png",
+    "bytes": 1580653,
+    "md5": "0810166131307c1094d37e73a8490542",
+    "map": "grass_medium_01:alpha"
+   }
+  ],
+  "materials": [
+   {
+    "name": "grass_medium_01",
+    "surface": "foliage",
+    "maps": {
+     "diffuse": "PolyHaven/grass_medium_01/Source~/grass_medium_01__diffuse.jpg",
+     "normal": "PolyHaven/grass_medium_01/grass_medium_01__normal.jpg",
+     "arm": "PolyHaven/grass_medium_01/Source~/grass_medium_01__arm.jpg",
+     "alpha": "PolyHaven/grass_medium_01/Source~/grass_medium_01__alpha.png"
+    },
+    "alphaCutoff": 0.5
+   }
+  ],
+  "objects": [
+   {
+    "name": "grass_medium_01_small_a_LOD0",
+    "boundsMin": [
+     -0.0799,
+     -0.0025,
+     -0.0826
+    ],
+    "boundsMax": [
+     0.1049,
+     0.1379,
+     0.0797
+    ],
+    "triangles": 833,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 833,
+      "vertices": 888,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_large_b_LOD0",
+    "boundsMin": [
+     -0.146,
+     -0.0256,
+     -0.1338
+    ],
+    "boundsMax": [
+     0.1381,
+     0.1436,
+     0.1419
+    ],
+    "triangles": 4626,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 4626,
+      "vertices": 4823,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_mid_b_LOD0",
+    "boundsMin": [
+     -0.0765,
+     -0.0033,
+     -0.0877
+    ],
+    "boundsMax": [
+     0.1113,
+     0.1744,
+     0.1133
+    ],
+    "triangles": 1257,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 1257,
+      "vertices": 1386,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tall_b_LOD0",
+    "boundsMin": [
+     -0.0839,
+     -0.0019,
+     -0.0603
+    ],
+    "boundsMax": [
+     0.066,
+     0.2838,
+     0.0745
+    ],
+    "triangles": 310,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 310,
+      "vertices": 354,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tall_a_LOD0",
+    "boundsMin": [
+     -0.0796,
+     -0.0056,
+     -0.0745
+    ],
+    "boundsMax": [
+     0.0814,
+     0.317,
+     0.084
+    ],
+    "triangles": 290,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 290,
+      "vertices": 330,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tall_c_LOD0",
+    "boundsMin": [
+     -0.0666,
+     -0.0057,
+     -0.0506
+    ],
+    "boundsMax": [
+     0.0864,
+     0.2305,
+     0.0776
+    ],
+    "triangles": 340,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 340,
+      "vertices": 394,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_small_b_LOD0",
+    "boundsMin": [
+     -0.0922,
+     -0.0077,
+     -0.0978
+    ],
+    "boundsMax": [
+     0.0738,
+     0.0922,
+     0.092
+    ],
+    "triangles": 653,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 653,
+      "vertices": 700,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_mid_c_LOD0",
+    "boundsMin": [
+     -0.0802,
+     -0.0214,
+     -0.108
+    ],
+    "boundsMax": [
+     0.1122,
+     0.1232,
+     0.0948
+    ],
+    "triangles": 1466,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 1466,
+      "vertices": 1580,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_mid_a_LOD0",
+    "boundsMin": [
+     -0.1118,
+     -0.0229,
+     -0.1124
+    ],
+    "boundsMax": [
+     0.1038,
+     0.1948,
+     0.109
+    ],
+    "triangles": 2287,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 2287,
+      "vertices": 2593,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_large_a_LOD0",
+    "boundsMin": [
+     -0.1528,
+     -0.0075,
+     -0.1577
+    ],
+    "boundsMax": [
+     0.1642,
+     0.1392,
+     0.1689
+    ],
+    "triangles": 6422,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 6422,
+      "vertices": 7044,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_large_c_LOD0",
+    "boundsMin": [
+     -0.1452,
+     -0.0215,
+     -0.1354
+    ],
+    "boundsMax": [
+     0.1336,
+     0.1209,
+     0.1197
+    ],
+    "triangles": 5945,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 5945,
+      "vertices": 6405,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_c_LOD0",
+    "boundsMin": [
+     -0.002,
+     -0.0015,
+     -0.0007
+    ],
+    "boundsMax": [
+     0.014,
+     0.0809,
+     0.0283
+    ],
+    "triangles": 40,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 40,
+      "vertices": 44,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_a_LOD0",
+    "boundsMin": [
+     -0.0233,
+     -0.0027,
+     -0.051
+    ],
+    "boundsMax": [
+     0.044,
+     0.1098,
+     0.0228
+    ],
+    "triangles": 79,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 79,
+      "vertices": 87,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_b_LOD0",
+    "boundsMin": [
+     -0.0042,
+     -0.0023,
+     -0.0341
+    ],
+    "boundsMax": [
+     0.0194,
+     0.0579,
+     0.0003
+    ],
+    "triangles": 28,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 28,
+      "vertices": 30,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_d_LOD0",
+    "boundsMin": [
+     -0.001,
+     -0.0027,
+     -0.0543
+    ],
+    "boundsMax": [
+     0.0421,
+     0.0452,
+     0.0342
+    ],
+    "triangles": 32,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 32,
+      "vertices": 36,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_e_LOD0",
+    "boundsMin": [
+     -0.0268,
+     -0.0046,
+     -0.0223
+    ],
+    "boundsMax": [
+     0.0585,
+     0.0448,
+     0.0518
+    ],
+    "triangles": 62,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 62,
+      "vertices": 66,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "grass_medium_01_tiny_f_LOD0",
+    "boundsMin": [
+     -0.003,
+     -0.0029,
+     -0.0455
+    ],
+    "boundsMax": [
+     0.0522,
+     0.0442,
+     0.0234
+    ],
+    "triangles": 60,
+    "subMeshes": [
+     {
+      "material": "grass_medium_01",
+      "triangles": 60,
+      "vertices": 60,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "tree_stump_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Floor dressing: litter mound 1.4 x 1.6 m with a rotted stump at ground level (top 0.38 m). Not cover",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/tree_stump_01/tree_stump_01_2k.fbx",
+    "relPath": "PolyHaven/tree_stump_01/tree_stump_01.fbx",
+    "bytes": 2871228,
+    "md5": "cd5a41cb0c5346d50b3fff371c9f0be9",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/tree_stump_01/tree_stump_01_diff_2k.jpg",
+    "relPath": "PolyHaven/tree_stump_01/tree_stump_01__basecolor.jpg",
+    "bytes": 3189746,
+    "md5": "5e061f6985b34f3c36824e63473ed1c9",
+    "map": "tree_stump_01:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/tree_stump_01/tree_stump_01_nor_gl_2k.png",
+    "relPath": "PolyHaven/tree_stump_01/tree_stump_01__normal.png",
+    "bytes": 21153049,
+    "md5": "7aabc92618568609f247e6d753205521",
+    "map": "tree_stump_01:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/tree_stump_01/tree_stump_01_arm_2k.jpg",
+    "relPath": "PolyHaven/tree_stump_01/Source~/tree_stump_01__arm.jpg",
+    "bytes": 2801595,
+    "md5": "07f544eae11d9a255bef25e82510a91f",
+    "map": "tree_stump_01:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "tree_stump_01",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/tree_stump_01/tree_stump_01__basecolor.jpg",
+     "normal": "PolyHaven/tree_stump_01/tree_stump_01__normal.png",
+     "arm": "PolyHaven/tree_stump_01/Source~/tree_stump_01__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "tree_stump_01",
+    "boundsMin": [
+     -0.7844,
+     -0.193,
+     -0.7604
+    ],
+    "boundsMax": [
+     0.6411,
+     0.3797,
+     0.8299
+    ],
+    "triangles": 41046,
+    "subMeshes": [
+     {
+      "material": "tree_stump_01",
+      "triangles": 41046,
+      "vertices": 22472,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "tree_stump_02",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Floor dressing: litter mound 1.5 x 1.4 m with a rotted stump at ground level (top 0.29 m). Not cover",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/tree_stump_02/tree_stump_02_2k.fbx",
+    "relPath": "PolyHaven/tree_stump_02/tree_stump_02.fbx",
+    "bytes": 4439452,
+    "md5": "8bc5f57ef499939ef7affef2365d5722",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/tree_stump_02/tree_stump_02_diff_2k.jpg",
+    "relPath": "PolyHaven/tree_stump_02/tree_stump_02__basecolor.jpg",
+    "bytes": 3435356,
+    "md5": "278b1dadd4a5dd61142e09f7c9139dd2",
+    "map": "tree_stump_02:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/tree_stump_02/tree_stump_02_nor_gl_2k.png",
+    "relPath": "PolyHaven/tree_stump_02/tree_stump_02__normal.png",
+    "bytes": 21949989,
+    "md5": "72be55a41d332839e2e646a22daf2f32",
+    "map": "tree_stump_02:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/tree_stump_02/tree_stump_02_arm_2k.jpg",
+    "relPath": "PolyHaven/tree_stump_02/Source~/tree_stump_02__arm.jpg",
+    "bytes": 2924552,
+    "md5": "23acef106fdfcca65082578e632ceaeb",
+    "map": "tree_stump_02:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "tree_stump_02",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/tree_stump_02/tree_stump_02__basecolor.jpg",
+     "normal": "PolyHaven/tree_stump_02/tree_stump_02__normal.png",
+     "arm": "PolyHaven/tree_stump_02/Source~/tree_stump_02__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "tree_stump_02",
+    "boundsMin": [
+     -0.7179,
+     -0.2335,
+     -0.6743
+    ],
+    "boundsMax": [
+     0.8038,
+     0.2886,
+     0.7182
+    ],
+    "triangles": 62345,
+    "subMeshes": [
+     {
+      "material": "tree_stump_02",
+      "triangles": 62345,
+      "vertices": 33119,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "dead_tree_trunk_02",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Bent, split trunk piece 4.05 m long and 0.31 to 0.48 m thick, propped on a branch stub (its bounding box is 1.06 m because of the bend and the stub). Sun-bleached scan from the verdant_trail collection. Low clutter, not cover. The FBX has authored LOD0 to LOD3",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/dead_tree_trunk_02/dead_tree_trunk_02_2k.fbx",
+    "relPath": "PolyHaven/dead_tree_trunk_02/dead_tree_trunk_02.fbx",
+    "bytes": 6606124,
+    "md5": "92925d8aebfcd1c8531c06e7c5ed6aa0",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/dead_tree_trunk_02/dead_tree_trunk_02_diff_2k.jpg",
+    "relPath": "PolyHaven/dead_tree_trunk_02/dead_tree_trunk_02__basecolor.jpg",
+    "bytes": 3484654,
+    "md5": "016bd2d6b12a49c130ffd1a34c0e50e9",
+    "map": "dead_tree_trunk_02:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/dead_tree_trunk_02/dead_tree_trunk_02_nor_gl_2k.png",
+    "relPath": "PolyHaven/dead_tree_trunk_02/dead_tree_trunk_02__normal.png",
+    "bytes": 22134280,
+    "md5": "dc54ba5fdb45b5f71b12c8a816663ca8",
+    "map": "dead_tree_trunk_02:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/dead_tree_trunk_02/dead_tree_trunk_02_arm_2k.jpg",
+    "relPath": "PolyHaven/dead_tree_trunk_02/Source~/dead_tree_trunk_02__arm.jpg",
+    "bytes": 2968937,
+    "md5": "6c34b9bcc1f65d9f3c8e14016ceda09f",
+    "map": "dead_tree_trunk_02:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "dead_tree_trunk_02",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/dead_tree_trunk_02/dead_tree_trunk_02__basecolor.jpg",
+     "normal": "PolyHaven/dead_tree_trunk_02/dead_tree_trunk_02__normal.png",
+     "arm": "PolyHaven/dead_tree_trunk_02/Source~/dead_tree_trunk_02__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "dead_tree_trunk_02",
+    "boundsMin": [
+     -1.9244,
+     -0.3284,
+     -0.5008
+    ],
+    "boundsMax": [
+     2.1269,
+     0.7267,
+     0.5553
+    ],
+    "triangles": 83128,
+    "subMeshes": [
+     {
+      "material": "dead_tree_trunk_02",
+      "triangles": 83128,
+      "vertices": 46112,
+      "hasUv0": true
+     }
+    ]
+   }
+  ],
+  "fbxNodes": [
+   "dead_tree_trunk_02_LOD0",
+   "dead_tree_trunk_02_LOD1",
+   "dead_tree_trunk_02_LOD2",
+   "dead_tree_trunk_02_LOD3"
+  ]
+ },
+ {
+  "id": "dry_branches_medium_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Three dead branches scattered on the floor",
+  "resolution": "2k",
+  "milestone": "M2",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/dry_branches_medium_01/dry_branches_medium_01_2k.fbx",
+    "relPath": "PolyHaven/dry_branches_medium_01/dry_branches_medium_01.fbx",
+    "bytes": 699532,
+    "md5": "d2c86db2fe63c54f9d88ca8d3df80606",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/dry_branches_medium_01/dry_branches_medium_01_diff_2k.jpg",
+    "relPath": "PolyHaven/dry_branches_medium_01/dry_branches_medium_01__basecolor.jpg",
+    "bytes": 2815859,
+    "md5": "5f7ca4d25884545bd9b2063e43c0595c",
+    "map": "dry_branches_medium_01:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/dry_branches_medium_01/dry_branches_medium_01_nor_gl_2k.jpg",
+    "relPath": "PolyHaven/dry_branches_medium_01/dry_branches_medium_01__normal.jpg",
+    "bytes": 4559165,
+    "md5": "385022548e1a3b84be6c4ab2e103aa4f",
+    "map": "dry_branches_medium_01:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/dry_branches_medium_01/dry_branches_medium_01_arm_2k.jpg",
+    "relPath": "PolyHaven/dry_branches_medium_01/Source~/dry_branches_medium_01__arm.jpg",
+    "bytes": 2959483,
+    "md5": "7610240aa1aafb3c6cfa5c7f89051c33",
+    "map": "dry_branches_medium_01:arm"
+   }
+  ],
+  "materials": [
+   {
+    "name": "dry_branches_medium_01",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/dry_branches_medium_01/dry_branches_medium_01__basecolor.jpg",
+     "normal": "PolyHaven/dry_branches_medium_01/dry_branches_medium_01__normal.jpg",
+     "arm": "PolyHaven/dry_branches_medium_01/Source~/dry_branches_medium_01__arm.jpg"
+    }
+   }
+  ],
+  "objects": [
+   {
+    "name": "dry_branches_medium_01_c",
+    "boundsMin": [
+     -0.0686,
+     -0.054,
+     -0.4047
+    ],
+    "boundsMax": [
+     0.0619,
+     0.0893,
+     0.3724
+    ],
+    "triangles": 5616,
+    "subMeshes": [
+     {
+      "material": "dry_branches_medium_01",
+      "triangles": 5616,
+      "vertices": 3641,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "dry_branches_medium_01_b",
+    "boundsMin": [
+     -0.0599,
+     -0.0626,
+     -0.4545
+    ],
+    "boundsMax": [
+     0.0912,
+     0.0792,
+     0.584
+    ],
+    "triangles": 5254,
+    "subMeshes": [
+     {
+      "material": "dry_branches_medium_01",
+      "triangles": 5254,
+      "vertices": 3493,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "dry_branches_medium_01_a",
+    "boundsMin": [
+     -0.137,
+     -0.1402,
+     -0.6344
+    ],
+    "boundsMax": [
+     0.1861,
+     0.2008,
+     0.6648
+    ],
+    "triangles": 5933,
+    "subMeshes": [
+     {
+      "material": "dry_branches_medium_01",
+      "triangles": 5933,
+      "vertices": 4252,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fir_sapling_medium",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Three young firs 5.9 to 8.8 m with branches to the ground: thickets (visual cover only), the fir wall on the bank",
+  "resolution": "2k",
+  "milestone": "M3",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/fir_sapling_medium/fir_sapling_medium_2k.fbx",
+    "relPath": "PolyHaven/fir_sapling_medium/fir_sapling_medium.fbx",
+    "bytes": 51634508,
+    "md5": "488e0c522e667ee3e0d4c914c485d992",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_sapling_medium/fir_sapling_medium_branches_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_sapling_medium/fir_sapling_medium_branches__basecolor.jpg",
+    "bytes": 2839282,
+    "md5": "e9375177560503904ece137474cfde0b",
+    "map": "fir_sapling_medium_branches:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_sapling_medium/fir_sapling_medium_branches_nor_gl_2k.png",
+    "relPath": "PolyHaven/fir_sapling_medium/fir_sapling_medium_branches__normal.png",
+    "bytes": 22422527,
+    "md5": "4a249448a15a27f2cc2645287dc65bf7",
+    "map": "fir_sapling_medium_branches:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_sapling_medium/fir_sapling_medium_branches_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_branches__arm.jpg",
+    "bytes": 2783615,
+    "md5": "1ffec60c862633f2bb5c47f2102651cf",
+    "map": "fir_sapling_medium_branches:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_sapling_medium/fir_sapling_medium_twigs_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__diffuse.jpg",
+    "bytes": 908300,
+    "md5": "f5e2dd9085334845f662fc11c60eb713",
+    "map": "fir_sapling_medium_twigs:diffuse"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_sapling_medium/fir_sapling_medium_twigs_nor_gl_2k.jpg",
+    "relPath": "PolyHaven/fir_sapling_medium/fir_sapling_medium_twigs__normal.jpg",
+    "bytes": 1611490,
+    "md5": "2072f6b164184f0ca9b41f8623bfec06",
+    "map": "fir_sapling_medium_twigs:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_sapling_medium/fir_sapling_medium_twigs_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__arm.jpg",
+    "bytes": 1271524,
+    "md5": "2fcac76cebb4f5fdc7fba2f31e02a490",
+    "map": "fir_sapling_medium_twigs:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_sapling_medium/fir_sapling_medium_twigs_alpha_2k.png",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__alpha.png",
+    "bytes": 996187,
+    "md5": "1d93929d869e5539ec245ae3eddb7243",
+    "map": "fir_sapling_medium_twigs:alpha"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/fir_sapling_medium/fir_sapling_medium_2k.gltf",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium.gltf",
+    "bytes": 17059,
+    "md5": "ab770a7f4437bb1585c856e9467345cf",
+    "map": "gltf"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/fir_sapling_medium/fir_sapling_medium.bin",
+    "relPath": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium.bin",
+    "bytes": 74159400,
+    "md5": "d3976657a03ce2e6eccfa56b378bbcd0",
+    "map": "gltfBuffer"
+   }
+  ],
+  "materials": [
+   {
+    "name": "fir_sapling_medium_branches",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/fir_sapling_medium/fir_sapling_medium_branches__basecolor.jpg",
+     "normal": "PolyHaven/fir_sapling_medium/fir_sapling_medium_branches__normal.png",
+     "arm": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_branches__arm.jpg"
+    }
+   },
+   {
+    "name": "fir_sapling_medium_twigs",
+    "surface": "foliage",
+    "maps": {
+     "diffuse": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__diffuse.jpg",
+     "normal": "PolyHaven/fir_sapling_medium/fir_sapling_medium_twigs__normal.jpg",
+     "arm": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__arm.jpg",
+     "alpha": "PolyHaven/fir_sapling_medium/Source~/fir_sapling_medium_twigs__alpha.png"
+    },
+    "alphaCutoff": 0.4
+   },
+   {
+    "name": "fir_sapling_medium_branches_dead",
+    "sameAs": "fir_sapling_medium_branches"
+   }
+  ],
+  "objects": [
+   {
+    "name": "fir_sapling_medium_a_LOD0",
+    "boundsMin": [
+     -2.5523,
+     -0.0882,
+     -2.5557
+    ],
+    "boundsMax": [
+     2.4356,
+     8.7381,
+     2.7202
+    ],
+    "triangles": 685046,
+    "subMeshes": [
+     {
+      "material": "fir_sapling_medium_branches",
+      "triangles": 8490,
+      "vertices": 4697,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_twigs",
+      "triangles": 674746,
+      "vertices": 773792,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_branches_dead",
+      "triangles": 1810,
+      "vertices": 1211,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fir_sapling_medium_b_LOD0",
+    "boundsMin": [
+     -2.0443,
+     -0.118,
+     -1.9368
+    ],
+    "boundsMax": [
+     2.2243,
+     7.6773,
+     2.0211
+    ],
+    "triangles": 420822,
+    "subMeshes": [
+     {
+      "material": "fir_sapling_medium_branches",
+      "triangles": 3710,
+      "vertices": 2157,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_twigs",
+      "triangles": 415302,
+      "vertices": 476454,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_branches_dead",
+      "triangles": 1810,
+      "vertices": 1211,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fir_sapling_medium_c_LOD0",
+    "boundsMin": [
+     -2.0659,
+     -0.1523,
+     -1.9424
+    ],
+    "boundsMax": [
+     2.2407,
+     5.7545,
+     2.0709
+    ],
+    "triangles": 427645,
+    "subMeshes": [
+     {
+      "material": "fir_sapling_medium_branches",
+      "triangles": 3780,
+      "vertices": 2197,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_twigs",
+      "triangles": 422055,
+      "vertices": 484177,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_sapling_medium_branches_dead",
+      "triangles": 1810,
+      "vertices": 1211,
+      "hasUv0": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fir_tree_01",
+  "source": "polyhaven",
+  "kind": "model",
+  "role": "Three tall firs 14.1 to 18.9 m: overstory in the core, backdrop on the bank",
+  "resolution": "2k",
+  "milestone": "M4",
+  "license": "CC0-1.0",
+  "objectsSource": "fbx",
+  "boundsSpace": "source-rh-yup",
+  "note": "trunk_c has no UV set in the glTF, and neither the glTF nor the FBX package references the trunk_c textures (only the .blend does). Whether the FBX carries usable UVs for trunk_c is unknown until import: see noUvFallback.",
+  "maxTextureSize": 2048,
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/fir_tree_01/fir_tree_01_2k.fbx",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01.fbx",
+    "bytes": 249300492,
+    "md5": "3712fee7385479902dd55444797d52e1",
+    "map": "mesh"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_bark_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_bark__basecolor.jpg",
+    "bytes": 2839282,
+    "md5": "e9375177560503904ece137474cfde0b",
+    "map": "fir_tree_01_bark:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_bark_nor_gl_2k.png",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_bark__normal.png",
+    "bytes": 22422527,
+    "md5": "4a249448a15a27f2cc2645287dc65bf7",
+    "map": "fir_tree_01_bark:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_bark_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_bark__arm.jpg",
+    "bytes": 2783615,
+    "md5": "1ffec60c862633f2bb5c47f2102651cf",
+    "map": "fir_tree_01_bark:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_a_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_a__basecolor.jpg",
+    "bytes": 3028704,
+    "md5": "44fd71883c0e29551243c8937c47b65c",
+    "map": "fir_tree_01_trunk_a:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_a_nor_gl_2k.png",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_a__normal.png",
+    "bytes": 16308667,
+    "md5": "2dcf41e05b6fd7ddfe2a77e024fb2844",
+    "map": "fir_tree_01_trunk_a:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_a_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_a__arm.jpg",
+    "bytes": 2974686,
+    "md5": "7f6bfdfd4987848b09b119cc1294e177",
+    "map": "fir_tree_01_trunk_a:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_b_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_b__basecolor.jpg",
+    "bytes": 2548347,
+    "md5": "cba156ed09519ca12bea8c7ff90585ee",
+    "map": "fir_tree_01_trunk_b:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_b_nor_gl_2k.png",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_b__normal.png",
+    "bytes": 15603340,
+    "md5": "0c89b51bf9b04c9ebb1ff103b6740012",
+    "map": "fir_tree_01_trunk_b:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_b_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_b__arm.jpg",
+    "bytes": 2718246,
+    "md5": "3d0e1b965f2ac48b894d259e4ec5f10c",
+    "map": "fir_tree_01_trunk_b:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_c_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_c__basecolor.jpg",
+    "bytes": 2946273,
+    "md5": "d3b48fba7c02c8a962e8848716293937",
+    "map": "fir_tree_01_trunk_c:basecolor"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_c_nor_gl_2k.png",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_trunk_c__normal.png",
+    "bytes": 16876318,
+    "md5": "3e5406f9b6f3d4018ace7c1b0d8958f1",
+    "map": "fir_tree_01_trunk_c:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_trunk_c_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_c__arm.jpg",
+    "bytes": 3179364,
+    "md5": "dc245badb3d2d389e41f2780861a069b",
+    "map": "fir_tree_01_trunk_c:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_twig_diff_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__diffuse.jpg",
+    "bytes": 1141996,
+    "md5": "6d023f52dab632b031a2ab8e5a27541f",
+    "map": "fir_tree_01_twig:diffuse"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_twig_nor_gl_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/fir_tree_01_twig__normal.jpg",
+    "bytes": 1611490,
+    "md5": "2072f6b164184f0ca9b41f8623bfec06",
+    "map": "fir_tree_01_twig:normal"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fir_tree_01/fir_tree_01_twig_arm_2k.jpg",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__arm.jpg",
+    "bytes": 1271524,
+    "md5": "2fcac76cebb4f5fdc7fba2f31e02a490",
+    "map": "fir_tree_01_twig:arm"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_twig_alpha_2k.png",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__alpha.png",
+    "bytes": 996187,
+    "md5": "1d93929d869e5539ec245ae3eddb7243",
+    "map": "fir_tree_01_twig:alpha"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/fir_tree_01/fir_tree_01_2k.gltf",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01.gltf",
+    "bytes": 30279,
+    "md5": "937cc3176a17f40d47d655c54571dbd7",
+    "map": "gltf"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/fir_tree_01/fir_tree_01.bin",
+    "relPath": "PolyHaven/fir_tree_01/Source~/fir_tree_01.bin",
+    "bytes": 478462204,
+    "md5": "26d2bf6d4d2e32d3524e8fa3760f643f",
+    "map": "gltfBuffer"
+   }
+  ],
+  "materials": [
+   {
+    "name": "fir_tree_01_bark",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/fir_tree_01/fir_tree_01_bark__basecolor.jpg",
+     "normal": "PolyHaven/fir_tree_01/fir_tree_01_bark__normal.png",
+     "arm": "PolyHaven/fir_tree_01/Source~/fir_tree_01_bark__arm.jpg"
+    }
+   },
+   {
+    "name": "fir_tree_01_trunk_a",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/fir_tree_01/fir_tree_01_trunk_a__basecolor.jpg",
+     "normal": "PolyHaven/fir_tree_01/fir_tree_01_trunk_a__normal.png",
+     "arm": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_a__arm.jpg"
+    }
+   },
+   {
+    "name": "fir_tree_01_trunk_b",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/fir_tree_01/fir_tree_01_trunk_b__basecolor.jpg",
+     "normal": "PolyHaven/fir_tree_01/fir_tree_01_trunk_b__normal.png",
+     "arm": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_b__arm.jpg"
+    }
+   },
+   {
+    "name": "fir_tree_01_twig",
+    "surface": "foliage",
+    "maps": {
+     "diffuse": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__diffuse.jpg",
+     "normal": "PolyHaven/fir_tree_01/fir_tree_01_twig__normal.jpg",
+     "arm": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__arm.jpg",
+     "alpha": "PolyHaven/fir_tree_01/Source~/fir_tree_01_twig__alpha.png"
+    },
+    "alphaCutoff": 0.4
+   },
+   {
+    "name": "fir_tree_01_dead_branches",
+    "sameAs": "fir_tree_01_bark"
+   },
+   {
+    "name": "fir_tree_01_trunk_c",
+    "surface": "opaque",
+    "maps": {
+     "basecolor": "PolyHaven/fir_tree_01/fir_tree_01_trunk_c__basecolor.jpg",
+     "normal": "PolyHaven/fir_tree_01/fir_tree_01_trunk_c__normal.png",
+     "arm": "PolyHaven/fir_tree_01/Source~/fir_tree_01_trunk_c__arm.jpg"
+    },
+    "noUvFallback": "fir_tree_01_bark"
+   }
+  ],
+  "objects": [
+   {
+    "name": "fir_tree_01_a_LOD0",
+    "boundsMin": [
+     -3.2191,
+     -0.0802,
+     -3.5408
+    ],
+    "boundsMax": [
+     3.3146,
+     18.8449,
+     2.8861
+    ],
+    "triangles": 4176819,
+    "subMeshes": [
+     {
+      "material": "fir_tree_01_bark",
+      "triangles": 21422,
+      "vertices": 12892,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_trunk_a",
+      "triangles": 84308,
+      "vertices": 44259,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_twig",
+      "triangles": 4066119,
+      "vertices": 5368447,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_dead_branches",
+      "triangles": 4970,
+      "vertices": 3325,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fir_tree_01_b_LOD0",
+    "boundsMin": [
+     -2.5644,
+     -0.0868,
+     -3.1395
+    ],
+    "boundsMax": [
+     3.0482,
+     13.9684,
+     2.9171
+    ],
+    "triangles": 2300624,
+    "subMeshes": [
+     {
+      "material": "fir_tree_01_bark",
+      "triangles": 9582,
+      "vertices": 5774,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_trunk_b",
+      "triangles": 78776,
+      "vertices": 41051,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_twig",
+      "triangles": 2207296,
+      "vertices": 2901312,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_dead_branches",
+      "triangles": 4970,
+      "vertices": 3325,
+      "hasUv0": true
+     }
+    ]
+   },
+   {
+    "name": "fir_tree_01_c_LOD0",
+    "boundsMin": [
+     -2.747,
+     -0.0938,
+     -2.9963
+    ],
+    "boundsMax": [
+     3.5589,
+     14.4268,
+     2.97
+    ],
+    "triangles": 505494,
+    "subMeshes": [
+     {
+      "material": "fir_tree_01_bark",
+      "triangles": 9536,
+      "vertices": 5750,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_twig",
+      "triangles": 446074,
+      "vertices": 597984,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_dead_branches",
+      "triangles": 3616,
+      "vertices": 2419,
+      "hasUv0": true
+     },
+     {
+      "material": "fir_tree_01_trunk_c",
+      "triangles": 46268,
+      "vertices": 24161,
+      "hasUv0": false
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "kloofendal_misty_morning_puresky",
+  "source": "polyhaven",
+  "kind": "hdri",
+  "role": "Sky for the showcase preset HazySun",
+  "resolution": "4k",
+  "milestone": "M5",
+  "license": "CC0-1.0",
+  "preset": "HazySun",
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/kloofendal_misty_morning_puresky_4k.hdr",
+    "relPath": "PolyHaven/kloofendal_misty_morning_puresky/kloofendal_misty_morning_puresky__sky.hdr",
+    "bytes": 12659983,
+    "md5": "7f0f40b402cd944c599b88000f53e108",
+    "map": "sky"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/exr/1k/kloofendal_misty_morning_puresky_1k.exr",
+    "relPath": "PolyHaven/kloofendal_misty_morning_puresky/Source~/kloofendal_misty_morning_puresky__sky1k.exr",
+    "bytes": 5662607,
+    "md5": "07b5b1c30e6b9a3e4d681bdb31f49a26",
+    "map": "skyCalibration"
+   }
+  ]
+ },
+ {
+  "id": "qwantani_dusk_2_puresky",
+  "source": "polyhaven",
+  "kind": "hdri",
+  "role": "Sky for the Dusk preset",
+  "resolution": "4k",
+  "milestone": "M5",
+  "license": "CC0-1.0",
+  "preset": "Dusk",
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/qwantani_dusk_2_puresky_4k.hdr",
+    "relPath": "PolyHaven/qwantani_dusk_2_puresky/qwantani_dusk_2_puresky__sky.hdr",
+    "bytes": 17976514,
+    "md5": "a37e1a2ff49dea91e8be7a83f219557e",
+    "map": "sky"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/exr/1k/qwantani_dusk_2_puresky_1k.exr",
+    "relPath": "PolyHaven/qwantani_dusk_2_puresky/Source~/qwantani_dusk_2_puresky__sky1k.exr",
+    "bytes": 4983112,
+    "md5": "2ba88732662df93456ec5420af7e2b44",
+    "map": "skyCalibration"
+   }
+  ]
+ },
+ {
+  "id": "qwantani_night_puresky",
+  "source": "polyhaven",
+  "kind": "hdri",
+  "role": "Sky for the Night preset (moonless, so the moon light is not counted twice)",
+  "resolution": "4k",
+  "milestone": "M5",
+  "license": "CC0-1.0",
+  "preset": "Night",
+  "files": [
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/qwantani_night_puresky_4k.hdr",
+    "relPath": "PolyHaven/qwantani_night_puresky/qwantani_night_puresky__sky.hdr",
+    "bytes": 21221482,
+    "md5": "acd645e92308841aa0c82eada9830f2d",
+    "map": "sky"
+   },
+   {
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/exr/1k/qwantani_night_puresky_1k.exr",
+    "relPath": "PolyHaven/qwantani_night_puresky/Source~/qwantani_night_puresky__sky1k.exr",
+    "bytes": 5176052,
+    "md5": "98a01e512f7e85a08d3237f669e42221",
+    "map": "skyCalibration"
+   }
+  ]
+ }
+]

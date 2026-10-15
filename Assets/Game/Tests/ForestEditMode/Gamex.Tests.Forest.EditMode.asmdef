@@ -1,0 +1,24 @@
+{
+    "name": "Gamex.Tests.Forest.EditMode",
+    "rootNamespace": "Gamex.Tests.Forest",
+    "references": [
+        "Gamex.Runtime",
+        "Gamex.EditorTools",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.AI.Navigation",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "autoReferenced": false
+}

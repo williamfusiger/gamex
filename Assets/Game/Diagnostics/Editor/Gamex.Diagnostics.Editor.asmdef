@@ -1,0 +1,9 @@
+{
+    "name": "Gamex.Diagnostics.Editor",
+    "rootNamespace": "Gamex.Diagnostics.Editor",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}
