@@ -1,0 +1,70 @@
+// W1 test-only probe (spec 3.1, 8.6): evaluates the wind shader's own functions on given inputs, so the tests compare the GPU code
+// with the CPU mirror (GamexGust against ForestWindGlobals.SampleGust) and check displaced positions (GamexWindDeform). Never
+// referenced by a scene, so it is not in the player. The C# that dispatches it sets every value the kernels read on the
+// ComputeShader itself (ForestWindProbeSupport), the wind globals included.
+#pragma kernel Gust
+#pragma kernel Deform
+
+#define GAMEX_WIND_COMPUTE
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+SAMPLER(s_linear_clamp_sampler);
+SAMPLER(s_point_clamp_sampler);   // W1 I2: ForestWind.hlsl takes the nearest texel's side next to a body's axis
+#include "Assets/Game/Shaders/ForestWind.hlsl"
+
+uint _Count;
+
+// Gust: (x, z, t) in, e out.
+StructuredBuffer<float4> _GustInput;
+RWStructuredBuffer<float> _GustOutput;
+
+[numthreads(64, 1, 1)]
+void Gust(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Count)
+        return;
+    float4 q = _GustInput[id.x];
+    _GustOutput[id.x] = GamexGust(q.xy, q.z);
+}
+
+// Deform: one instance (pivot, scale, yaw), many vertices in object space.
+StructuredBuffer<float4> _DeformPosition;    // xyz object space
+StructuredBuffer<float4> _DeformNormal;      // xyz object space
+StructuredBuffer<float4> _DeformTangent;     // xyz object space
+StructuredBuffer<float4> _DeformColour;      // R, G, B, A
+StructuredBuffer<float4> _DeformAnchor;      // W1 R2: UV2 (a frond's or blade's base offset and azimuth; 0 for trees)
+RWStructuredBuffer<float4> _DeformOutPosition;
+RWStructuredBuffer<float4> _DeformOutNormal;
+RWStructuredBuffer<float4> _DeformOutVelocity;
+float4 _ProbePivot;          // xyz absolute world, w uniform scale
+float4 _ProbeCamera;         // xyz absolute world, w time (the Time node's value)
+float4 _ProbeO2W0, _ProbeO2W1, _ProbeO2W2;   // rows of the object-to-world 3x3 (rotation x scale)
+float4 _ProbeW2O0, _ProbeW2O1, _ProbeW2O2;   // rows of the world-to-object 3x3
+float4 _ProbeSway, _ProbeFlutter, _ProbeMotion, _ProbePush, _ProbeStem;
+float4 _ProbePass;           // x: 1 = a moon cascade, y: 1 = the torch's shadow, z: W1 R1: 1 = the push state is given (_ProbeLean*, _ProbeLeanPrev*)
+float4 _ProbeLean, _ProbeLeanPrev;   // W1 R1: an instance's push state this frame and last frame, as the Instances kernel had it (texel 3)
+float4 _ProbeLeanB, _ProbeLeanC, _ProbeLeanPrevB, _ProbeLeanPrevC;   // W1 R2: texels 4 and 5 (a passable sapling's bow, clearance and body)
+
+[numthreads(64, 1, 1)]
+void Deform(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Count)
+        return;
+    float3x3 o2w = float3x3(_ProbeO2W0.xyz, _ProbeO2W1.xyz, _ProbeO2W2.xyz);
+    float3x3 w2o = float3x3(_ProbeW2O0.xyz, _ProbeW2O1.xyz, _ProbeW2O2.xyz);
+    float3 p0 = _DeformPosition[id.x].xyz;
+    float3 positionAWS = _ProbePivot.xyz + mul(o2w, p0);
+    float3 p, n, t, v;
+    GamexPushState now, previous;
+    now.a = _ProbeLean;
+    now.b = _ProbeLeanB;
+    now.c = _ProbeLeanC;
+    previous.a = _ProbeLeanPrev;
+    previous.b = _ProbeLeanPrevB;
+    previous.c = _ProbeLeanPrevC;
+    GamexWindDeform(p0, _DeformNormal[id.x].xyz, _DeformTangent[id.x].xyz, _DeformColour[id.x], _DeformAnchor[id.x], positionAWS, _ProbePivot.xyz, _ProbePivot.w,
+                    _ProbeCamera.xyz, _ProbeCamera.w, _ProbeSway, _ProbeFlutter, _ProbeMotion, _ProbePush, _ProbeStem, w2o,
+                    _ProbePass.x > 0.5, _ProbePass.y > 0.5, _ProbePass.z > 0.5, now, previous, p, n, t, v);
+    _DeformOutPosition[id.x] = float4(p, 1.0);
+    _DeformOutNormal[id.x] = float4(n, 0.0);
+    _DeformOutVelocity[id.x] = float4(v, 0.0);
+}

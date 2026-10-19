@@ -450,15 +450,33 @@ namespace Gamex.EditorTools
             return ClusterToTarget(source, targetTriangles);
         }
 
-        public static Mesh ToMesh(MeshData data, string name, bool recalculateTangents)
+        public static Mesh ToMesh(MeshData data, string name, bool recalculateTangents) => ToMesh(data, name, recalculateTangents, null);
+
+        /// <summary>
+        /// As ToMesh(data, name, recalculateTangents), with one vertex colour per position (W1 wind data). The colours are set before
+        /// Optimize, which reorders vertices: set after it, they would pair with the wrong vertices.
+        /// </summary>
+        public static Mesh ToMesh(MeshData data, string name, bool recalculateTangents, Color32[] colors) => ToMesh(data, name, recalculateTangents, colors, null);
+
+        /// <summary>
+        /// W1 R2: as ToMesh(data, name, recalculateTangents, colors), with a UV2 value per position (a fern's or grass blade's anchor,
+        /// ForestWindData.ClumpAnchors), also set before Optimize.
+        /// </summary>
+        public static Mesh ToMesh(MeshData data, string name, bool recalculateTangents, Color32[] colors, Vector4[] uv2)
         {
             Validate(data, nameof(data));
+            if (colors != null && colors.Length != data.positions.Length)
+                throw new ArgumentException($"{name}: {colors.Length} colours for {data.positions.Length} vertices.", nameof(colors));
+            if (uv2 != null && uv2.Length != data.positions.Length)
+                throw new ArgumentException($"{name}: {uv2.Length} UV2 values for {data.positions.Length} vertices.", nameof(uv2));
 
             var mesh = new Mesh { name = name };
             mesh.indexFormat = data.positions.Length > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
             mesh.SetVertices(data.positions);
             if (data.normals != null) mesh.SetNormals(data.normals);
             if (data.uv0 != null) mesh.SetUVs(0, data.uv0);
+            if (uv2 != null) mesh.SetUVs(2, uv2);
+            if (colors != null) mesh.SetColors(colors);
             if (data.tangents != null && !recalculateTangents) mesh.SetTangents(data.tangents);
 
             mesh.subMeshCount = data.subMeshes.Length;

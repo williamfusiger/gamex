@@ -133,8 +133,11 @@ namespace Gamex.EditorTools
                 for (int i = 0; i < materials.Length; i++)
                 {
                     if (materials[i] == null) continue;
-                    // Kit materials are named after their manifest material, variants with a "__" suffix.
+                    // Kit materials are named after their manifest material, variants with a "__" suffix:
+                    // <name>[__tint<k>][__mv]. W1: the motion-vector twin ("__mv") is kept, so a tint never takes it away.
                     string name = materials[i].name;
+                    bool motionVectors = name.EndsWith("__mv", StringComparison.Ordinal);
+                    if (motionVectors) name = name.Substring(0, name.Length - "__mv".Length);
                     int suffix = name.IndexOf("__", StringComparison.Ordinal);
                     bool plain = suffix < 0;
                     if (!plain)
@@ -145,7 +148,7 @@ namespace Gamex.EditorTools
                     if (ForestManifest.FindMaterial(name) == null || !ForestMaterials.IsFoliage(name)) continue;
 
                     // Not every foliage material has a variant (grass has none); it then keeps what it has.
-                    Material wanted = ForestMaterials.Get(name, tint);
+                    Material wanted = ForestMaterials.Get(name, tint, motionVectors);
                     if (wanted == null || wanted == materials[i]) continue;
                     materials[i] = wanted;
                     changed = true;
@@ -893,7 +896,10 @@ namespace Gamex.EditorTools
                 for (int i = 0; i < parts.levels.Length; i++)
                 {
                     Level level = parts.levels[i];
-                    MeshRenderer renderer = AddRenderer(root.transform, "LOD" + i, level.mesh, level.materials,
+                    // W1: the levels that are pushed draw the "__mv" twins (MotionVectors pass on); the others, and the
+                    // LOD0_Shadow proxy below, keep the plain materials.
+                    Material[] levelMaterials = i < ForestKitSpec.MotionVectorLevels(parts.prefabId) ? MotionVectorTwins(level.materials, parts.prefabId) : level.materials;
+                    MeshRenderer renderer = AddRenderer(root.transform, "LOD" + i, level.mesh, levelMaterials,
                         level.castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off, parts.prefabId);
                     renderers[i] = new Renderer[] { renderer };
                 }
@@ -955,6 +961,22 @@ namespace Gamex.EditorTools
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        // Every moving material of a level by its "__mv" twin; a static one stays. A moving material without its twin stops the build.
+        static Material[] MotionVectorTwins(Material[] materials, string prefabId)
+        {
+            var twins = new Material[materials.Length];
+            for (int i = 0; i < materials.Length; i++)
+            {
+                Material material = materials[i];
+                bool moving = material != null && ForestWindProfiles.ForMaterial(material.name) != null;
+                Material twin = moving ? ForestMaterials.MotionVectorTwin(material) : null;
+                if (moving && twin == null)
+                    throw new InvalidOperationException($"{prefabId}: {material.name} has no __mv twin. Run Gamex/Forest/1 Import Assets.");
+                twins[i] = twin ?? material;
+            }
+            return twins;
         }
 
         /// <summary>Replaces one prefab's entry in the kit report and saves the file.</summary>
@@ -1084,7 +1106,19 @@ namespace Gamex.EditorTools
 
                 // The scan keeps the tangents it was imported with; a decimated level has new vertices.
                 bool newTangents = lod > 0 || data.tangents == null;
-                Mesh mesh = SaveMesh(ForestMeshTools.ToMesh(data, prefabId + "__lod" + lod, newTangents), MeshPath(prefabId, "lod" + lod));
+                Mesh mesh;
+                if (cls == ForestClass.FernClump)
+                {
+                    // W1: a single fern clump carries the wind colours of slot 0 (its instance hash separates neighbours), compact.
+                    // W1 R2: and each frond's anchor in UV2 (its base and azimuth), for the push that turns it about its base.
+                    Color32[] colours = ForestWindData.ClumpColours(data.positions, AllIndices(data), 0, true, ForestKitSpec.Seed ^ StableHash(prefabId));
+                    Vector4[] anchors = ForestWindData.ClumpAnchors(data.positions, AllIndices(data), true);
+                    mesh = SaveMesh(ForestWindData.Compact(ForestMeshTools.ToMesh(data, prefabId + "__lod" + lod, newTangents, colours, anchors)), MeshPath(prefabId, "lod" + lod));
+                }
+                else
+                {
+                    mesh = SaveMesh(ForestMeshTools.ToMesh(data, prefabId + "__lod" + lod, newTangents), MeshPath(prefabId, "lod" + lod));
+                }
                 levels[lod] = new Level
                 {
                     mesh = mesh, materials = levelMaterials, castShadows = ForestKitSpec.CastsShadows(cls, lod), untilDistance = distances[lod],
@@ -1216,8 +1250,8 @@ namespace Gamex.EditorTools
                 {
                     // The far level keeps a few clumps where they stood and makes them larger instead.
                     Mesh combined = lod == 0
-                        ? Combine(prefabId + "__lod0", patch, layout, everyClump, 0f, clumps)
-                        : Combine(prefabId + "__lod" + lod, patch, layout, patch.farClumps, ForestKitSpec.FernFarScale, clumps);
+                        ? Combine(prefabId + "__lod0", patch, layout, everyClump, 0f, clumps, fern)
+                        : Combine(prefabId + "__lod" + lod, patch, layout, patch.farClumps, ForestKitSpec.FernFarScale, clumps, fern);
                     Mesh mesh = SaveMesh(combined, MeshPath(prefabId, "lod" + lod));
                     levels[lod] = new Level
                     {
@@ -1286,30 +1320,70 @@ namespace Gamex.EditorTools
         }
 
         static Mesh Combine(string name, ForestKitSpec.PatchSpec patch, ClumpPlacement[] layout, int[] which, float fixedScale,
-            Dictionary<string, Mesh> clumps)
+            Dictionary<string, Mesh> clumps, bool fern)
         {
             var instances = new CombineInstance[which.Length];
+            var copies = new List<Mesh>();
             long vertices = 0;
-            for (int i = 0; i < which.Length; i++)
+            // W1: the wind colours of each slot, computed from the clump mesh's own vertex order, so the far level (the same clumps
+            // in the same slots) keeps every frond's phase.
+            int seed = ForestKitSpec.Seed ^ StableHash(patch.id);
+            // W1 R2: each frond's or blade's anchor (its base and azimuth), computed in clump space and turned and scaled into the patch
+            // with its slot; concatenated in the order CombineMeshes concatenates the vertices, and set before Optimize.
+            var anchors = new List<Vector4>();
+            try
             {
-                ClumpPlacement placement = layout[which[i]];
-                Mesh clump = clumps[patch.clumps[which[i]]];
-                float scale = fixedScale > 0f ? fixedScale : placement.scale;
-                instances[i] = new CombineInstance
+                for (int i = 0; i < which.Length; i++)
                 {
-                    mesh = clump,
-                    subMeshIndex = 0,
-                    transform = Matrix4x4.TRS(placement.position, Quaternion.Euler(0f, placement.yaw, 0f), Vector3.one * scale),
-                };
-                vertices += clump.vertexCount;
-            }
+                    ClumpPlacement placement = layout[which[i]];
+                    Mesh clump = clumps[patch.clumps[which[i]]];
+                    Mesh coloured = UnityEngine.Object.Instantiate(clump);
+                    copies.Add(coloured);
+                    coloured.colors32 = ForestWindData.ClumpColours(coloured.vertices, coloured.triangles, which[i], fern, seed);
+                    float scale = fixedScale > 0f ? fixedScale : placement.scale;
+                    Matrix4x4 slot = Matrix4x4.TRS(placement.position, Quaternion.Euler(0f, placement.yaw, 0f), Vector3.one * scale);
+                    anchors.AddRange(ForestWindData.TransformAnchors(ForestWindData.ClumpAnchors(coloured.vertices, coloured.triangles, fern), slot));
+                    instances[i] = new CombineInstance
+                    {
+                        mesh = coloured,
+                        subMeshIndex = 0,
+                        transform = slot,
+                    };
+                    vertices += clump.vertexCount;
+                }
 
-            var mesh = new Mesh { name = name };
-            mesh.indexFormat = vertices > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
-            mesh.CombineMeshes(instances, true, true, false);
-            mesh.RecalculateBounds();
-            mesh.Optimize();
-            return mesh;
+                var mesh = new Mesh { name = name };
+                mesh.indexFormat = vertices > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+                mesh.CombineMeshes(instances, true, true, false);
+                if (mesh.vertexCount != anchors.Count)
+                    throw new InvalidOperationException($"{name}: the combined mesh has {mesh.vertexCount} vertices, its clumps' anchors {anchors.Count}.");
+                // The anchors pair with the combined vertices only if CombineMeshes kept the clumps' order: check every position.
+                Vector3[] combined = mesh.vertices;
+                int at = 0;
+                for (int i = 0; i < which.Length; i++)
+                {
+                    Vector3[] own = copies[i].vertices;
+                    Matrix4x4 slot = instances[i].transform;
+                    for (int v = 0; v < own.Length; v++, at++)
+                        if ((slot.MultiplyPoint3x4(own[v]) - combined[at]).sqrMagnitude > 1e-8f)
+                            throw new InvalidOperationException($"{name}: CombineMeshes did not keep the clumps' vertex order (vertex {at}); the anchors would pair with the wrong vertices.");
+                }
+                mesh.SetUVs(2, anchors);
+                mesh.RecalculateBounds();
+                mesh.Optimize();
+                return ForestWindData.Compact(mesh);
+            }
+            finally
+            {
+                foreach (Mesh copy in copies) UnityEngine.Object.DestroyImmediate(copy);
+            }
+        }
+
+        static int[] AllIndices(ForestMeshTools.MeshData data)
+        {
+            var all = new List<int>();
+            foreach (int[] indices in data.subMeshes) all.AddRange(indices);
+            return all.ToArray();
         }
 
         // A script-built mesh for the MeshCollider: 10 cm clusters, coarser if that is still too many triangles.

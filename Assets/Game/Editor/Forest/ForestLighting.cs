@@ -137,6 +137,10 @@ namespace Gamex.EditorTools
                 volume.sharedProfile = profiles[i];
 
                 AddKeyLight(child, presets[i]);
+                // W1 I2: the preset's wind lives on the preset object, so it switches with the preset and a lighting-only rebuild keeps it.
+                ForestWindRig.AddController(child, presets[i]);
+                // W1 I2b: and its forest cull distance (Night's shorter than the kit's).
+                ForestWindRig.AddCullDistance(child, presets[i]);
 
                 // Set up while active, then switched off: an inactive child keeps its light and volume but HDRP
                 // does not count them, and it allows only one shadow-casting directional light.

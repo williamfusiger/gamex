@@ -18,13 +18,42 @@ namespace Gamex.EditorTools
     /// (ValidateMaterial clears and rebuilds them from property values); textures are assigned before
     /// validating (the normal and mask keywords come from the slots being filled); and a material is
     /// saved before it gets a diffusion profile (the profile reference is a sub-asset of the material).
+    ///
+    /// W1: every material of a model with a wind profile (young and tall firs, fern, grass) is built on the wind Shader Graph
+    /// (Gamex/ForestWind, or Gamex/ForestWindTriplanar for the triplanar bark) with HDRP/Lit's property names, and gets an
+    /// "__mv" twin whose MotionVectors pass is on (the levels that are pushed, ForestKitSpec.MotionVectorLevels). The switch
+    /// WindShaderDefault (or -forestWindShader on|off, or WindShaderOverride) rebuilds the same assets on HDRP/Lit again.
     /// </summary>
     public static class ForestMaterials
     {
         // Part of every stamp: raise it when a recipe changes, so every material is rebuilt.
-        const string ToolVersion = "materials-2";
+        // materials-3 (W1): the wind recipe family on the wind Shader Graphs, the __mv twins, the shader mode in every stamp.
+        const string ToolVersion = "materials-3";
 
         const string LitShaderName = "HDRP/Lit";
+        const string MotionVectorSuffix = "__mv";
+        const string MotionVectorPass = "MotionVectors";
+
+        /// <summary>THE switch (W1): false builds every material on HDRP/Lit again, same assets and GUIDs.</summary>
+        public const bool WindShaderDefault = true;
+
+        /// <summary>A/B only. Null = WindShaderDefault, or the command line's -forestWindShader on|off.</summary>
+        public static bool? WindShaderOverride;
+
+        /// <summary>Whether the materials of moving models are built on the wind Shader Graphs.</summary>
+        public static bool WindShaderActive
+        {
+            get
+            {
+                if (WindShaderOverride.HasValue) return WindShaderOverride.Value;
+                string mode = ForestArgs.Value("-forestWindShader");
+                if (mode == "on") return true;
+                if (mode == "off") return false;
+                if (!string.IsNullOrEmpty(mode))
+                    throw new ArgumentException($"-forestWindShader must be on or off, not '{mode}'.");
+                return WindShaderDefault;
+            }
+        }
         const string TerrainMaterialPath = ForestPaths.KitMaterials + "/ForestTerrain.mat";
         const string ImportHint =
             "Run Gamex/Forest/1 Import Assets: it packs the textures, refreshes the asset database and then builds the materials.";
@@ -205,6 +234,9 @@ namespace Gamex.EditorTools
         {
             public string assetPath, stamp;
             public Surface surface;
+            // W1: on the wind graph (else HDRP/Lit), its profile, and whether this is the __mv twin (MotionVectors pass on).
+            public bool wind, motionVectors;
+            public ForestWindProfiles.Profile profile;
             public Texture2D baseColour, normal, mask;
             public Color colour = Color.white;
             public float cutoff = 0.5f, smoothness = 0.5f, aoRemapMin, smoothnessRemapMax = 1f;
@@ -232,6 +264,13 @@ namespace Gamex.EditorTools
             EnsureFolder(ForestPaths.KitTerrainLayers);
 
             Shader lit = FindLitShader();
+            bool windShader = WindShaderActive;
+            if (windShader)
+            {
+                ForestWindShaderGraphs.EnsureGraphs();
+                // Without a pipeline instance a Shader Graph material does not validate (ForestWindShaderGraphs.EnsureRenderPipeline).
+                ForestWindShaderGraphs.EnsureRenderPipeline();
+            }
             DiffusionProfileSettings profile = AssetDatabase.LoadAssetAtPath<DiffusionProfileSettings>(ForestPaths.FoliageProfilePath);
             if (profile == null)
                 Debug.LogWarning($"Forest materials: the foliage diffusion profile is missing at {ForestPaths.FoliageProfilePath}. " +
@@ -243,6 +282,13 @@ namespace Gamex.EditorTools
             var pending = new List<(string assetPath, string stamp)>();
             int built = 0, kept = 0, layers = 0;
             void Lit(Recipe recipe) => Count(BuildLit(lit, profile, recipe, force, pending, out _), ref built, ref kept);
+            // A moving model's material and its __mv twin (W1).
+            void Both(Func<bool, Recipe> recipe)
+            {
+                Recipe plain = recipe(false);
+                Lit(plain);
+                if (plain.profile != null) Lit(recipe(true));
+            }
 
             foreach (ForestAssetEntry entry in ForestManifest.All)
             {
@@ -260,17 +306,17 @@ namespace Gamex.EditorTools
                 foreach (ForestMaterialEntry material in entry.materials)
                 {
                     if (material.sameAs != "") continue;   // Get() resolves it to the other material's asset
-                    Lit(SurfaceRecipe(entry, material, 0, profile != null));
+                    Both(mv => SurfaceRecipe(entry, material, 0, profile != null, mv));
                     if (TintVariants.ContainsKey(material.name))
-                        Lit(SurfaceRecipe(entry, material, 1, profile != null));
+                        Both(mv => SurfaceRecipe(entry, material, 1, profile != null, mv));
                     if (triplanarSources.Contains(material.name))
-                        Lit(TriplanarRecipe(entry, material));
+                        Both(mv => TriplanarRecipe(entry, material, mv));
 
                     // A crown core is first made when the tree baker asks for one (GetCrownCore). Once it
                     // exists it is kept in step with the atlas here.
-                    bool hasCrownCore = AssetDatabase.LoadAssetAtPath<Material>(CrownCorePath(material.name)) != null;
+                    bool hasCrownCore = AssetDatabase.LoadAssetAtPath<Material>(CrownCorePath(material.name, false)) != null;
                     if (material.surface == "foliage" && hasCrownCore)
-                        Lit(CrownCoreRecipe(entry, material));
+                        Both(mv => CrownCoreRecipe(entry, material, mv));
                 }
             }
             if (layers > 0)
@@ -278,28 +324,75 @@ namespace Gamex.EditorTools
 
             AssetDatabase.SaveAssets();
             Commit(pending);
-            Debug.Log($"Forest materials: {built} assets built, {kept} already up to date; {GetTerrainLayers().Length} terrain layers usable.");
+            Debug.Log($"Forest materials: {built} assets built, {kept} already up to date; {GetTerrainLayers().Length} terrain layers usable; " +
+                      $"moving models on {(windShader ? "the wind Shader Graphs" : LitShaderName)}.");
         }
 
         /// <summary>
         /// The material asset for an FBX material name; sameAs is followed. Tint 1 exists only for the
         /// fern and the two twig materials. Null when the asset has not been built.
         /// </summary>
-        public static Material Get(string materialName, int tint = 0)
+        public static Material Get(string materialName, int tint = 0) => Get(materialName, tint, false);
+
+        /// <summary>
+        /// As Get(materialName, tint), or its "__mv" twin (MotionVectors pass on, W1) when <paramref name="motionVectors"/> is set.
+        /// A static material has no twin: null.
+        /// </summary>
+        public static Material Get(string materialName, int tint, bool motionVectors)
         {
             ForestMaterialEntry material = ForestManifest.ResolveMaterial(materialName);
             if (material == null || tint < 0) return null;
-            return AssetDatabase.LoadAssetAtPath<Material>(SurfacePath(material.name, tint));
+            return AssetDatabase.LoadAssetAtPath<Material>(SurfacePath(material.name, tint, motionVectors));
         }
 
         /// <summary>
         /// The triplanar variant "&lt;name&gt;__triplanar", which exists only for a material that another
         /// one names as its noUvFallback. Null when not built.
         /// </summary>
-        public static Material GetTriplanar(string materialName)
+        public static Material GetTriplanar(string materialName) => GetTriplanar(materialName, false);
+
+        /// <summary>As GetTriplanar(materialName), or its "__mv" twin (W1).</summary>
+        public static Material GetTriplanar(string materialName, bool motionVectors)
         {
             ForestMaterialEntry material = ForestManifest.ResolveMaterial(materialName);
-            return material == null ? null : AssetDatabase.LoadAssetAtPath<Material>(TriplanarPath(material.name));
+            return material == null ? null : AssetDatabase.LoadAssetAtPath<Material>(TriplanarPath(material.name, motionVectors));
+        }
+
+        /// <summary>The "__mv" twin of a kit material (W1), the material itself when it is a twin, or null for a static material.</summary>
+        public static Material MotionVectorTwin(Material material)
+        {
+            if (material == null) return null;
+            string path = AssetDatabase.GetAssetPath(material);
+            if (string.IsNullOrEmpty(path) || !path.StartsWith(ForestPaths.KitMaterials + "/", StringComparison.Ordinal)) return null;
+            string name = Path.GetFileNameWithoutExtension(path);
+            if (name.EndsWith(MotionVectorSuffix, StringComparison.Ordinal)) return material;
+            if (ForestWindProfiles.ForMaterial(name) == null) return null;
+            return AssetDatabase.LoadAssetAtPath<Material>($"{ForestPaths.KitMaterials}/{name}{MotionVectorSuffix}.mat");
+        }
+
+        /// <summary>True for a manifest material of a model with a wind profile (sameAs followed): it moves, on the wind graphs.</summary>
+        public static bool IsWindMaterial(string materialName) => ForestWindProfiles.ForMaterial(materialName) != null;
+
+        [MenuItem("Gamex/Forest/Wind/Materials: Wind Shader")]
+        public static void UseWindShaderFromMenu() => RebuildInMode(true);
+
+        [MenuItem("Gamex/Forest/Wind/Materials: HDRP Lit (A-B)")]
+        public static void UseLitFromMenu() => RebuildInMode(false);
+
+        // The same assets (same GUIDs) rebuilt in the other mode; prefabs and scene untouched. The stamps record the mode, so the
+        // next ordinary build returns to WindShaderDefault.
+        static void RebuildInMode(bool windShader)
+        {
+            bool? previous = WindShaderOverride;
+            WindShaderOverride = windShader;
+            try
+            {
+                BuildAll(true);
+            }
+            finally
+            {
+                WindShaderOverride = previous;
+            }
         }
 
         /// <summary>
@@ -321,7 +414,7 @@ namespace Gamex.EditorTools
         {
             ForestMaterialEntry material = ForestManifest.ResolveMaterial(twigMaterialName);
             if (material == null || material.surface != "foliage") return null;
-            string path = CrownCorePath(material.name);
+            string path = CrownCorePath(material.name, false);
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
@@ -331,9 +424,14 @@ namespace Gamex.EditorTools
 
             EnsureFolder(ForestPaths.KitMaterials);
             var pending = new List<(string assetPath, string stamp)>();
-            BuildLit(FindLitShader(), null, CrownCoreRecipe(owner, material), true, pending, out Material core);
+            BuildLit(FindLitShader(), null, CrownCoreRecipe(owner, material, false), true, pending, out Material core);
             // Only this asset: the caller is in the middle of a bake and may have much else unsaved.
             AssetDatabase.SaveAssetIfDirty(core);
+            if (IsWindMaterial(material.name))
+            {
+                BuildLit(FindLitShader(), null, CrownCoreRecipe(owner, material, true), true, pending, out Material twin);
+                AssetDatabase.SaveAssetIfDirty(twin);
+            }
             Commit(pending);
             return core;
         }
@@ -371,12 +469,14 @@ namespace Gamex.EditorTools
 
         // ---- asset paths ----
 
-        static string SurfacePath(string materialName, int tint) =>
-            $"{ForestPaths.KitMaterials}/{materialName}{(tint == 0 ? "" : "__tint" + tint.ToString(CultureInfo.InvariantCulture))}.mat";
+        static string SurfacePath(string materialName, int tint, bool motionVectors = false) =>
+            $"{ForestPaths.KitMaterials}/{materialName}{(tint == 0 ? "" : "__tint" + tint.ToString(CultureInfo.InvariantCulture))}{(motionVectors ? MotionVectorSuffix : "")}.mat";
 
-        static string TriplanarPath(string materialName) => $"{ForestPaths.KitMaterials}/{materialName}__triplanar.mat";
+        static string TriplanarPath(string materialName, bool motionVectors = false) =>
+            $"{ForestPaths.KitMaterials}/{materialName}__triplanar{(motionVectors ? MotionVectorSuffix : "")}.mat";
 
-        static string CrownCorePath(string materialName) => $"{ForestPaths.KitMaterials}/{materialName}__crowncore.mat";
+        static string CrownCorePath(string materialName, bool motionVectors) =>
+            $"{ForestPaths.KitMaterials}/{materialName}__crowncore{(motionVectors ? MotionVectorSuffix : "")}.mat";
 
         static string GroundPath(string layerId) => $"{ForestPaths.KitMaterials}/{layerId}__ground.mat";
 
@@ -384,7 +484,7 @@ namespace Gamex.EditorTools
 
         // ---- recipes ----
 
-        static Recipe SurfaceRecipe(ForestAssetEntry entry, ForestMaterialEntry material, int tint, bool profileAvailable)
+        static Recipe SurfaceRecipe(ForestAssetEntry entry, ForestMaterialEntry material, int tint, bool profileAvailable, bool motionVectors = false)
         {
             bool foliage = material.surface == "foliage";
             Color colour = BaseColourTint.TryGetValue(material.name, out Color matched) ? matched.gamma : Color.white;
@@ -396,7 +496,7 @@ namespace Gamex.EditorTools
             float aoRemapMin = !foliage && AoRemapMin.TryGetValue(material.name, out float lifted) ? lifted : 0f;
             var recipe = new Recipe
             {
-                assetPath = SurfacePath(material.name, tint),
+                assetPath = SurfacePath(material.name, tint, motionVectors),
                 surface = foliage ? Surface.Foliage : Surface.Opaque,
                 colour = colour,
                 aoRemapMin = aoRemapMin,
@@ -413,16 +513,49 @@ namespace Gamex.EditorTools
                 Md5(entry, material.maps.normal), Md5(entry, material.maps.arm),
                 Number(colour.r), Number(colour.g), Number(colour.b), Number(material.alphaCutoff), profileAvailable ? "profile" : "no profile",
                 "ao-remap", Number(aoRemapMin), "smoothness-remap", Number(smoothnessMax));
+            return WithWind(recipe, material.name, motionVectors);
+        }
+
+        /// <summary>
+        /// W1: the shader mode (wind graph or HDRP/Lit), the graph files' MD5, the profile values and the variant, in the recipe and
+        /// its stamp. A material whose model has no profile is static and unchanged.
+        /// </summary>
+        static Recipe WithWind(Recipe recipe, string materialName, bool motionVectors)
+        {
+            recipe.profile = ForestWindProfiles.ForMaterial(materialName);
+            if (recipe.profile == null)
+            {
+                if (motionVectors)
+                    throw new InvalidOperationException($"{materialName} does not move, so it has no __mv twin.");
+                return recipe;
+            }
+            recipe.wind = WindShaderActive;
+            // In the HDRP/Lit mode the twins are plain HDRP/Lit copies with the pass off (HDRP/Lit would turn it off at its next validation).
+            recipe.motionVectors = motionVectors && recipe.wind;
+            recipe.stamp = ForestStamps.Hash(recipe.stamp, "wind", recipe.wind ? "wind-graph" : "hdrp-lit", recipe.wind ? GraphFilesMd5() : "",
+                ForestWindProfiles.Describe(recipe.profile), motionVectors ? "mv" : "plain");
             return recipe;
         }
 
-        static Recipe TriplanarRecipe(ForestAssetEntry entry, ForestMaterialEntry material)
+        static string GraphFilesMd5()
+        {
+            var parts = new List<string>();
+            foreach (string path in new[] { ForestWindShaderGraphs.GraphPath, ForestWindShaderGraphs.TriplanarGraphPath,
+                         ForestWindShaderGraphs.VertexIncludePath, ForestWindShaderGraphs.SurfaceIncludePath })
+            {
+                string disk = ForestManifest.ProjectDiskPath(path);
+                parts.Add(File.Exists(disk) ? ForestStamps.Hash(File.ReadAllText(disk)) : "missing");
+            }
+            return string.Join("+", parts);
+        }
+
+        static Recipe TriplanarRecipe(ForestAssetEntry entry, ForestMaterialEntry material, bool motionVectors = false)
         {
             // Only a tileable opaque texture can be projected: a scan atlas or a leaf card cannot.
             if (material.surface != "opaque")
                 throw new InvalidDataException($"Material {material.name} is named as a noUvFallback but is not opaque.");
-            Recipe recipe = SurfaceRecipe(entry, material, 0, false);
-            recipe.assetPath = TriplanarPath(material.name);
+            Recipe recipe = SurfaceRecipe(entry, material, 0, false, motionVectors);
+            recipe.assetPath = TriplanarPath(material.name, motionVectors);
             recipe.surface = Surface.Triplanar;
             recipe.stamp = ForestStamps.Hash(recipe.stamp, "triplanar", recipe.assetPath);
             return recipe;
@@ -462,7 +595,7 @@ namespace Gamex.EditorTools
             return recipe;
         }
 
-        static Recipe CrownCoreRecipe(ForestAssetEntry entry, ForestMaterialEntry material)
+        static Recipe CrownCoreRecipe(ForestAssetEntry entry, ForestMaterialEntry material, bool motionVectors)
         {
             // Review 1 of the M4 captures: the core takes the twig material's own colour multiplier too, so it is the same
             // family as the needles around it (fir_tree_01_twig is darkened toward grey-green).
@@ -471,7 +604,7 @@ namespace Gamex.EditorTools
             mean.a = 1f;
             var recipe = new Recipe
             {
-                assetPath = CrownCorePath(material.name),
+                assetPath = CrownCorePath(material.name, motionVectors),
                 surface = Surface.CrownCore,
                 colour = mean.gamma,   // _BaseColor is a colour property: Unity converts it back to linear for the shader
                 smoothness = CrownCoreSmoothness,
@@ -479,12 +612,15 @@ namespace Gamex.EditorTools
             recipe.stamp = ForestStamps.Hash(ToolVersion, "crowncore", recipe.assetPath,
                 Md5(entry, material.maps.diffuse), Md5(entry, material.maps.alpha), Number(CrownCoreDarkening), Number(CrownCoreSmoothness),
                 Number(twigTint.r), Number(twigTint.g), Number(twigTint.b));
-            return recipe;
+            return WithWind(recipe, material.name, motionVectors);
         }
 
         // ---- HDRP/Lit ----
 
-        /// <summary>Creates the material asset, or updates it in place. Returns false when it was already up to date.</summary>
+        /// <summary>
+        /// Creates the material asset, or updates it in place. Returns false when it was already up to date. A wind recipe is built on
+        /// the wind Shader Graph instead of <paramref name="lit"/>, with the same property names and order (W1).
+        /// </summary>
         static bool BuildLit(Shader lit, DiffusionProfileSettings profile, Recipe recipe, bool force,
             List<(string assetPath, string stamp)> pending, out Material material)
         {
@@ -492,11 +628,19 @@ namespace Gamex.EditorTools
             if (!force && material != null && ForestStamps.IsCurrent(recipe.assetPath, recipe.stamp)) return false;
             ForestStamps.Forget(recipe.assetPath);
 
+            Shader shader = lit;
+            if (recipe.wind)
+            {
+                shader = ForestWindShaderGraphs.Load(recipe.surface == Surface.Triplanar);
+                if (shader == null)
+                    throw new InvalidOperationException($"{recipe.assetPath}: the wind Shader Graph has not been imported (Gamex/Forest/Wind/Write Shader Graphs).");
+            }
+
             bool isNew = material == null;
-            if (isNew) material = new Material(lit);
+            if (isNew) material = new Material(shader);
 
             bool translucent = recipe.surface == Surface.Foliage && profile != null;
-            Configure(material, lit, recipe, translucent, !isNew);
+            Configure(material, shader, recipe, translucent, !isNew);
             if (isNew) AssetDatabase.CreateAsset(material, recipe.assetPath);
 
             if (translucent)
@@ -509,9 +653,14 @@ namespace Gamex.EditorTools
                     // Standard has no translucency, and no possibility of that tint.
                     Debug.LogWarning($"Forest materials: {recipe.assetPath} got no diffusion profile hash. " +
                                      "It is built as Standard, without translucency.");
-                    Configure(material, lit, recipe, false, true);
+                    Configure(material, shader, recipe, false, true);
                 }
             }
+
+            // W1: after the last validation. The first validation of a Shader Graph material tags it MotionVector = User and turns
+            // the pass off; a pass turned on afterwards stays on through later validations (BaseUnlitAPI.cs:363-392).
+            if (recipe.wind)
+                material.SetShaderPassEnabled(MotionVectorPass, recipe.motionVectors);
 
             EditorUtility.SetDirty(material);
             pending.Add((recipe.assetPath, recipe.stamp));
@@ -535,10 +684,19 @@ namespace Gamex.EditorTools
                 material.shader = lit;
                 material.CopyPropertiesFromMaterial(pristine);
                 UnityEngine.Object.DestroyImmediate(pristine);
+                // W1: a material moving between HDRP/Lit and the wind graph must not keep the other shader's keywords
+                // (_NORMALMAP, _MASKMAP); ValidateMaterial rebuilds the ones that belong.
+                if (recipe.wind || ForestWindShaderGraphs.IsWindShader(lit) || recipe.profile != null)
+                    material.shaderKeywords = null;
             }
 
             bool foliage = recipe.surface == Surface.Foliage;
             bool triplanar = recipe.surface == Surface.Triplanar;
+            if (recipe.wind)
+            {
+                ConfigureWind(material, recipe, foliage, triplanar, translucent);
+                return;
+            }
 
             material.SetTexture("_BaseColorMap", recipe.baseColour);
             material.SetTexture("_NormalMap", recipe.normal);
@@ -570,9 +728,60 @@ namespace Gamex.EditorTools
 
             // Prefab contract: no "Enable GPU Instancing" on kit materials.
             material.enableInstancing = false;
+            // W1: a moving model's material rebuilt on HDRP/Lit (the A/B mode) drops the Shader Graph's override tag.
+            if (recipe.profile != null)
+                material.SetOverrideTag("MotionVector", "");
 
             if (!HDMaterial.ValidateMaterial(material))
                 throw new InvalidOperationException($"HDRP did not accept {recipe.assetPath} as one of its materials.");
+        }
+
+        /// <summary>
+        /// The wind graph's version of the recipe (W1 spec 3.3): HDRP/Lit's property names in HDRP/Lit's order, then the profile
+        /// vectors, then validation. The graph always samples its normal and mask maps (it has no _NORMALMAP / _MASKMAP keyword),
+        /// so a map-less crown core reads the defaults: white mask, bump normal.
+        /// </summary>
+        static void ConfigureWind(Material material, Recipe recipe, bool foliage, bool triplanar, bool translucent)
+        {
+            bool core = recipe.surface == Surface.CrownCore;
+            material.SetTexture("_BaseColorMap", recipe.baseColour);
+            material.SetTexture("_NormalMap", recipe.normal);
+            material.SetTexture("_MaskMap", recipe.mask);
+            material.SetColor("_BaseColor", recipe.colour);
+            // HDRP/Lit reads _Metallic and _Smoothness only without a mask map. On the graph the crown core's white mask gives
+            // metallic = _MetallicRemapMax and smoothness = _SmoothnessRemapMax, so they carry HDRP/Lit's values instead.
+            material.SetFloat("_MetallicRemapMin", 0f);
+            material.SetFloat("_MetallicRemapMax", core ? 0f : 1f);
+            material.SetFloat("_AORemapMin", recipe.aoRemapMin);
+            material.SetFloat("_AORemapMax", 1f);
+            material.SetFloat("_SmoothnessRemapMin", core ? recipe.smoothness : recipe.smoothnessRemapMin);
+            material.SetFloat("_SmoothnessRemapMax", core ? recipe.smoothness : recipe.smoothnessRemapMax);
+            // The crown core has no normal map: a scale of 0 keeps the vertex normal whatever the default texture decodes to,
+            // as HDRP/Lit without _NORMALMAP does.
+            material.SetFloat("_NormalScale", core ? 0f : recipe.normalScale);
+
+            material.SetFloat("_AlphaCutoffEnable", foliage ? 1f : 0f);
+            HDMaterial.SetAlphaCutoff(material, foliage ? recipe.cutoff : 0.5f);
+            material.SetFloat("_DoubleSidedEnable", foliage ? 1f : 0f);
+            material.SetFloat("_DoubleSidedNormalMode", 1f);   // Mirror: the same leaf shape on both sides
+            material.SetFloat("_MaterialID", translucent ? MaterialIdTranslucent : MaterialIdStandard);
+            material.SetFloat("_Thickness", translucent ? FoliageThickness : 1f);
+            if (triplanar)
+                material.SetFloat("_TexWorldScale", recipe.worldScale);
+            material.SetTextureOffset("_BaseColorMap", recipe.uvOffset);
+
+            ForestWindProfiles.Profile wind = recipe.profile;
+            material.SetVector("_GamexSway", wind.Sway);
+            material.SetVector("_GamexFlutter", wind.Flutter);
+            material.SetVector("_GamexMotion", wind.Motion);
+            material.SetVector("_GamexPush", wind.Push);
+            material.SetVector("_GamexStem", wind.Stem);
+
+            // Prefab contract: no "Enable GPU Instancing" on kit materials.
+            material.enableInstancing = false;
+
+            if (!HDMaterial.ValidateMaterial(material))
+                throw new InvalidOperationException($"HDRP did not accept {recipe.assetPath} on {material.shader.name} as one of its materials.");
         }
 
         static uint DiffusionProfileHashBits(Material material)

@@ -1,0 +1,492 @@
+// Gamex forest (W1 I2, spec 2.2, 6.2 and 7.4): the foliage interaction field and knob 2's gust texture.
+//
+// Step: once a frame, the field around the camera is shifted with its window, then every texel's press follows the bodies stamped
+// this frame. Channels: rg = the direction away from the body axis (world XZ) times the press's size, b = the pressing body's top
+// (world Y), a = press (W1 R2: signed: it springs back past rest). Texel (x, y) is the world cell origin + (x, y) x texel size; its centre
+// is what is stamped. A second texture pair keeps each texel's press velocity and its bruise.
+// Gust: GamexGust (the vertex shader's own function, from ForestWind.hlsl) at each 1 m cell centre around the focus.
+// Instances: every registered renderer's per-instance wind terms and push state (W1 I2b, R1, R2), below.
+//
+// The C# that dispatches it (Gamex.FoliageInteractionField, Gamex.ForestWindInstances) sets every value a kernel reads on this compute
+// shader itself.
+#pragma kernel Step
+#pragma kernel Gust
+#pragma kernel Instances
+
+#define GAMEX_WIND_COMPUTE
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+SAMPLER(s_linear_clamp_sampler);
+SAMPLER(s_point_clamp_sampler);   // W1 I2: ForestWind.hlsl takes the nearest texel's side next to a body's axis
+#include "Assets/Game/Shaders/ForestWind.hlsl"
+
+#define GAMEX_MAX_STAMPS 16
+
+Texture2D<float4> _Previous;
+RWTexture2D<float4> _Current;
+// W1 R2 (review of the R1 captures): each texel's press velocity and bruise, shifted with the field.
+Texture2D<float2> _PreviousState;
+RWTexture2D<float2> _CurrentState;
+float4 _Shift;                              // xy: whole texels the window moved since the last step
+// W1 R2: the press is a spring toward this frame's contact (or the bruise left behind): critically damped at _Spring.x rad/s while a
+// body presses further, underdamped at _Spring.y rad/s with damping _Spring.z when it lets go, over _Spring.w seconds. I2 and R1 let
+// a press decay with the field's tau (0.8 s, then a tail): fronds crept back over 3 to 4 s with no rebound.
+float4 _Spring;
+// W1 R2: the bruise: x the share of a contact it keeps, y its decay per step (exp(-dt / tau)), z what is subtracted per step after the
+// decay (so it ends at zero), w unused. It holds a faint parting of the low layer for a few seconds (a readable trail).
+float4 _Bruise;
+float _StillFloor;                          // the press a body standing still keeps outside its core, as a share of a walking body's
+float4 _Rect;                               // origin x, origin z (world, the window's corner), texel size (m), resolution
+float4 _Stamps[2 * GAMEX_MAX_STAMPS];       // per stamp: (ax, az, bx, bz), then (radius, band top world Y, strength, softness)
+float4 _StampVelocity[GAMEX_MAX_STAMPS];    // per stamp: (vx, vz, 0, 0), world m/s
+int _StampCount;
+
+[numthreads(8, 8, 1)]
+void Step(uint3 id : SV_DispatchThreadID)
+{
+    int resolution = (int)_Rect.w;
+    if ((int)id.x >= resolution || (int)id.y >= resolution)
+        return;
+
+    // The same world cell in last frame's window, or nothing when it was outside it.
+    int2 source = int2(id.xy) + int2(_Shift.xy);
+    float4 f = float4(0.0, 0.0, 0.0, 0.0);
+    float2 st = float2(0.0, 0.0);
+    if (all(source >= 0) && all(source < resolution))
+    {
+        f = _Previous[source];
+        st = _PreviousState[source];
+    }
+    float x = f.a, velocity = st.x, bruise = st.y, band = f.b;
+    float rgLength = length(f.rg);
+    float2 direction = rgLength > 1e-6 ? f.rg / rgLength : float2(0.0, 0.0);
+
+    // This frame's contact: the strongest stamp's press here.
+    float2 p = _Rect.xy + (float2(id.xy) + 0.5) * _Rect.z;
+    int count = min(_StampCount, GAMEX_MAX_STAMPS);
+    float contact = 0.0;
+    for (int i = 0; i < count; i++)
+    {
+        float4 segment = _Stamps[2 * i];
+        float4 body = _Stamps[2 * i + 1];
+        float2 a = segment.xy;
+        float2 ab = segment.zw - segment.xy;
+        float lengthSq = dot(ab, ab);
+        float t = lengthSq > 1e-8 ? saturate(dot(p - a, ab) / lengthSq) : 0.0;
+        float2 off = p - (a + ab * t);
+        float d = length(off);
+        float radius = body.x;
+        float m = body.z * (1.0 - smoothstep(0.4 * radius, radius + body.w, d));
+        // W1 R1: a body standing still presses its core (half its radius) fully and the rest at _StillFloor of a walking body's press.
+        float2 v = _StampVelocity[i].xy;
+        float speed = length(v);
+        m *= 1.0 - (1.0 - saturate(speed)) * (1.0 - _StillFloor) * smoothstep(0.45 * radius, 0.75 * radius, d);
+        if (m <= contact)
+            continue;
+        contact = m;
+        band = body.y;
+        // Away from the body axis; on the axis itself, to the left of the body's motion; standing still there, the side it had.
+        if (d > 0.02)
+            direction = off / d;
+        else if (speed > 0.1)
+            direction = float2(-v.y, v.x) / speed;
+    }
+
+    // The bruise: a share of the contact, decaying slowly to zero.
+    bruise = max(0.0, max(bruise * _Bruise.y - _Bruise.z, _Bruise.x * contact));
+    float target = max(contact, bruise);
+    float h = 0.5 * _Spring.w;
+    [unroll] for (int k = 0; k < 2; k++)
+    {
+        bool pressing = target > x;
+        float wn = pressing ? _Spring.x : _Spring.y;
+        float zeta = pressing ? 1.0 : _Spring.z;
+        velocity += (wn * wn * (target - x) - 2.0 * zeta * wn * velocity) * h;
+        x += velocity * h;
+    }
+    if (contact <= 0.0 && bruise <= 0.0 && abs(x) < 2e-3 && abs(velocity) < 2e-2)
+        x = velocity = 0.0;
+    bool active = x != 0.0 || velocity != 0.0;
+    _Current[id.xy] = active ? float4(direction * max(abs(x), 1e-3), band, x) : float4(0.0, 0.0, 0.0, 0.0);
+    _CurrentState[id.xy] = active || bruise > 0.0 ? float2(velocity, bruise) : float2(0.0, 0.0);
+}
+
+RWTexture2D<float> _GustOut;
+float4 _GustRectIn;                         // origin x, origin z (world), cell size (m), resolution
+float _GustTime;                            // Time.time + the controller's time offset: the Time node's value in play
+
+[numthreads(8, 8, 1)]
+void Gust(uint3 id : SV_DispatchThreadID)
+{
+    int resolution = (int)_GustRectIn.w;
+    if ((int)id.x >= resolution || (int)id.y >= resolution)
+        return;
+    float2 p = _GustRectIn.xy + (float2(id.xy) + 0.5) * _GustRectIn.z;
+    _GustOut[id.xy] = GamexGust(p, _GustTime);
+}
+
+// W1 I2b: the per-instance wind terms of every registered renderer (Gamex.ForestWindInstances), once a frame at one time (this
+// frame's, or last frame's for the motion vector pass), with the vertex shader's own GamexInstanceAnalytic. Each slot's static input
+// is eight float4: (pivot absolute world, scale), the three rows of the world-to-object 3x3 (W1 R1: the first row's w is the
+// instance's object-space height, the second's its horizontal reach in metres; W1 R2: the third's its crown's reach in the push band,
+// world metres), then _GamexSway, _GamexFlutter, _GamexMotion and _GamexStem of its materials. Each slot writes six float4 texels in a
+// row (GamexInstanceTexel): three of wind terms, three of push state (ForestWind.hlsl's GamexPushState).
+//
+// Every slot keeps state from frame to frame in _InstanceState (GAMEX_STATE_STRIDE float4 per slot), integrated by this frame's
+// dispatch over _InstanceStep.y seconds from this frame's stamps (_Stamps, the values the Step kernel stamped); last frame's dispatch,
+// which runs first, writes the state as it was.
+// - W1 R2 (review of the R1 captures), every slot: the wind's dynamics (state 2). R1's trunk sway and branch bob were this frame's gust
+//   times an oscillator, so a gust switched the forest on and off: when e fell, every tree stopped within half a swing. Now the mean
+//   lean is a damped oscillator at the instance's own trunk frequency driven by W (it lags a gust, overshoots when it leaves and rings
+//   down over a few cycles), and the oscillating terms take an envelope of W with a fast attack and a release of a few branch periods.
+// - A passable sapling (states 0, 1, 3, 4, 5): a root lean, an upper-stem bow and a clearance press, three springs driven by the bodies'
+//   geometry, and the pressing body latched (its axis segment, radius and band top) for the vertex shader's clearance.
+// - A solid fir (states 0, 1): its swing's press, a spring toward its contact (from the edge of its measured crown) and a bruise.
+StructuredBuffer<float4> _InstanceStatic;
+RWTexture2D<float4> _InstanceOut;
+RWStructuredBuffer<float4> _InstanceState;
+uint _InstanceCount;
+float _InstanceTime;                        // the Time node's value at that frame plus the controller's time offset
+// x: 1 = integrate the state (this frame's dispatch), 0 = write it as it is; y: dt (s); z: stamps to read; w: flags (1 = the wind's
+// dynamics start again from rest at this frame's wind: a knob, an override or the time offset jumped; 2 = no wind dynamics, tests only).
+float4 _InstanceStep;
+
+#define GAMEX_STATE_STRIDE 6u
+
+// The wind's dynamics (W1 R2).
+#define GAMEX_WIND_DAMPING 0.15             // the mean lean's damping: 2 to 4 visible cycles after a gust
+#define GAMEX_WIND_ATTACK 0.45              // s: the oscillating terms' envelope rises this fast
+#define GAMEX_WIND_RELEASE 2.5              // branch periods: and falls this slowly
+
+// The passable sapling (W1 R1, retuned in R2: B/probes/W1/R2).
+#define GAMEX_LEAN_FREQUENCY 1.1            // Hz, the root's natural frequency (a 3 to 6 m sapling's first mode)
+#define GAMEX_LEAN_DAMPING_PRESS 1.0        // while a body presses it further: no overshoot past what the body asks
+#define GAMEX_LEAN_DAMPING_RELEASE 0.5      // W1 R2 (0.35): it springs back with one overshoot of about a sixth of the lean
+#define GAMEX_LEAN_RATE_PRESS 2.2           // rad/s at most while pressed
+#define GAMEX_LEAN_RATE_RELEASE 3.5         // rad/s at most while it springs back
+#define GAMEX_LEAN_BRUSH 0.2                // rad: the bow of a body brushing the crown at its deepest (its surface at the stem), at a walk
+#define GAMEX_LEAN_MARGIN 0.12              // m: how far beyond the body's surface the stem is put at GAMEX_LEAN_LOW
+#define GAMEX_LEAN_LOW 0.7                  // m above the pivot: the lowest stem height that must clear a body (spec 8.4)
+#define GAMEX_LEAN_FORWARD 0.5              // the lean's forward share along the body's travel (to its side share 1)
+#define GAMEX_LEAN_HOLD 0.4                 // W1 R2: m behind the body's rear surface over which a passable sapling is held fully aside
+#define GAMEX_BOW_FREQUENCY 0.8             // Hz: the upper stem's mode, below the root's, so the crown lags and whips
+#define GAMEX_BOW_DAMPING 0.12
+#define GAMEX_BOW_COUPLING 0.5              // the crown's inertia against the root's angular acceleration
+#define GAMEX_BOW_LIMIT 0.5                 // rad
+#define GAMEX_CLEAR_ATTACK 3.0              // Hz, critically damped: the clearance press follows a body closing in
+#define GAMEX_CLEAR_RELEASE 1.5             // Hz, and springs back with one small overshoot
+#define GAMEX_CLEAR_DAMPING 0.3
+#define GAMEX_CLEAR_RAMP 0.6                // m: the clearance press rises over this much of the body's way into the crown
+
+// The solid fir (W1 R1, retuned in R2).
+#define GAMEX_SOLID_MEMORY 3.5              // s: a solid fir's sense is held this long after the last contact
+#define GAMEX_SOLID_RAMP 0.8                // m: its contact rises over this much of the body's way into its crown
+#define GAMEX_SOLID_ATTACK 1.4              // Hz, critically damped: the boughs swing in over about 0.35 s
+#define GAMEX_SOLID_RELEASE 1.25            // Hz, and spring back in about half a second with one overshoot
+#define GAMEX_SOLID_DAMPING 0.3
+#define GAMEX_SOLID_BRUISE 0.15             // the share of the contact the boughs keep for a while (a residual bend)
+#define GAMEX_SOLID_BRUISE_TAU 1.5          // s
+
+// One spring step: x toward target at frequency f (Hz), critically damped while x rises toward it and damped by zetaRelease when it
+// falls back, its rate limited, in four substeps.
+void GamexSpring(inout float x, inout float v, float target, float fPress, float fRelease, float zetaRelease, float limitPress, float limitRelease, float dt)
+{
+    float h = min(dt, 0.1) * 0.25;
+    [unroll] for (int k = 0; k < 4; k++)
+    {
+        bool pressing = target > x;
+        float wn = GAMEX_TAU * (pressing ? fPress : fRelease);
+        float zeta = pressing ? 1.0 : zetaRelease;
+        float limit = pressing ? limitPress : limitRelease;
+        v += (wn * wn * (target - x) - 2.0 * zeta * wn * v) * h;
+        v = clamp(v, -limit, limit);
+        x += v * h;
+    }
+}
+
+// The lean (radians, up to maxTheta) that puts the stem at GAMEX_LEAN_LOW above the pivot `need` metres aside along a direction whose
+// share across the body's path is across. W1 R2: the root lean turns the whole sapling, so it is asin(need / (low x across)).
+float GamexLeanFor(float need, float across, float maxTheta)
+{
+    if (need <= 0.0)
+        return 0.0;
+    return min(maxTheta, asin(saturate(need / (GAMEX_LEAN_LOW * max(across, 0.3)))));
+}
+
+void GamexSaplingStep(float3 pivot, float s, float4 stem, float H, float crownReach, inout float4 st0, inout float4 st1, inout float4 st3,
+                      inout float4 st4, inout float4 st5, float dt, int count, out GamexPushState state)
+{
+    // st0: (root lean, its angular velocity, direction x, z); st1: (latched side x, z, this frame's root target, its clearance need in m);
+    // st3: (bow, its angular velocity, clearance press, its velocity); st4: the latched body's axis segment; st5: (its radius, its band
+    // top, the root's angular velocity last step, 0).
+    float crown = crownReach > 0.0 ? crownReach : stem.z * s;
+    float rootTarget = 0.0, bowTarget = 0.0, pressTarget = 0.0, targetNeed = 0.0;
+    float2 targetDirection = st0.zw, side = st1.xy;
+    bool moving = abs(st0.x) > 0.03 || abs(st0.y) > 0.05 || abs(st3.z) > 0.02;
+    bool latched = dot(side, side) > 0.5 && moving;
+    float strongest = 0.0;
+    for (int i = 0; i < count; i++)
+    {
+        float4 segment = _Stamps[2 * i];
+        float4 body = _Stamps[2 * i + 1];
+        float radius = body.x, bandTop = body.y, strength = body.z, soft = body.w;
+        if (strength <= 0.0 || bandTop < pivot.y + 0.2)
+            continue;
+        float2 a = segment.xy, ab = segment.zw - segment.xy;
+        float lengthSq = dot(ab, ab);
+        float t = lengthSq > 1e-8 ? saturate(dot(pivot.xz - a, ab) / lengthSq) : 0.0;
+        float2 o = pivot.xz - (a + ab * t);
+        float d = length(o);
+        float reach = radius + soft + crown;
+        if (d >= reach)
+            continue;
+        float2 v = _StampVelocity[i].xy;
+        float speed = length(v);
+        float2 travel = speed > 0.1 ? v / speed : lengthSq > 1e-8 ? ab * rsqrt(lengthSq) : float2(0.0, 0.0);
+        float along = dot(o, travel);
+        float2 lateral = o - travel * along;
+        float lateralLength = length(lateral);
+        // The stem's own side of the body's path; on the path itself, the left of the motion (as the field's direction there).
+        float2 n = lateralLength > 0.02 ? lateral / lateralLength
+                 : dot(travel, travel) > 0.5 ? float2(-travel.y, travel.x)
+                 : d > 1e-3 ? o / d : float2(1.0, 0.0);
+        if (latched && dot(n, side) < 0.0)
+            n = side;   // a leaning sapling keeps its side: it never swings back through the body
+        float aside = dot(lateral, n);      // signed: negative when the latched side lies across the path from the stem
+        float2 direction = normalize(n + GAMEX_LEAN_FORWARD * travel);
+        float across = dot(direction, n);
+        float gate = smoothstep(pivot.y + 0.2, pivot.y + 0.6, bandTop) * strength;
+        float depth = saturate((reach - d) / (crown + soft));
+        float brush = GAMEX_LEAN_BRUSH * depth * sqrt(depth) * (0.4 + 0.6 * saturate(speed));
+        float need = max(0.0, radius + GAMEX_LEAN_MARGIN - aside);
+        float hold, press;
+        if (along >= -1e-4)
+        {
+            // Ahead of or beside the body: the stem goes aside while the body closes in through the crown.
+            hold = saturate((reach - d) / max(crown, 1e-3));
+            press = saturate((reach - d) / GAMEX_CLEAR_RAMP);
+        }
+        else
+        {
+            // W1 R2 (review of the R1 captures): behind the body, the sapling stays aside while the body's rear is still near its stem and
+            // lets go as the rear leaves its crown (R1 let go at once, so the crown sprang up through the body).
+            hold = 1.0 - smoothstep(radius + GAMEX_LEAN_HOLD, radius + max(crown, GAMEX_LEAN_HOLD + 0.4), d);
+            press = hold;
+        }
+        float root = GamexLeanFor(need * hold, across, stem.y) * gate;
+        rootTarget = max(rootTarget, root);
+        bowTarget = max(bowTarget, brush * hold * gate);
+        if (press * gate > strongest)
+        {
+            strongest = press * gate;
+            targetNeed = need * hold;
+            targetDirection = direction;
+            if (!latched) side = n;
+            st4 = segment;
+            st5.xy = float2(radius, bandTop);
+        }
+    }
+    pressTarget = strongest;
+
+    // The direction: taken at once by a sapling at rest, turned at most about 4 rad/s by one that leans; held when no body presses it.
+    float2 leanDirection = st0.zw;
+    if (strongest > 0.0)
+    {
+        if (dot(leanDirection, leanDirection) < 0.5 || !moving)
+            leanDirection = targetDirection;
+        else if (dot(leanDirection, targetDirection) > -0.5)
+        {
+            float2 blended = leanDirection + (targetDirection - leanDirection) * saturate(4.0 * dt);
+            if (dot(blended, blended) > 1e-6) leanDirection = normalize(blended);
+        }
+    }
+
+    // The root, then the bow (driven against the root's angular acceleration: the crown lags while the stem is pushed over and whips
+    // past upright when it springs back), then the clearance press.
+    float theta = st0.x, omega = st0.y;
+    GamexSpring(theta, omega, rootTarget, GAMEX_LEAN_FREQUENCY, GAMEX_LEAN_FREQUENCY, GAMEX_LEAN_DAMPING_RELEASE,
+                GAMEX_LEAN_RATE_PRESS, GAMEX_LEAN_RATE_RELEASE, dt);
+    float acceleration = dt > 1e-5 ? (omega - st5.z) / dt : 0.0;
+    float bow = st3.x, bowVelocity = st3.y;
+    {
+        float wn = GAMEX_TAU * GAMEX_BOW_FREQUENCY;
+        float h = min(dt, 0.1) * 0.25;
+        [unroll] for (int k = 0; k < 4; k++)
+        {
+            bowVelocity += (wn * wn * (bowTarget - bow) - 2.0 * GAMEX_BOW_DAMPING * wn * bowVelocity - GAMEX_BOW_COUPLING * acceleration) * h;
+            bowVelocity = clamp(bowVelocity, -4.0, 4.0);
+            bow = clamp(bow + bowVelocity * h, -GAMEX_BOW_LIMIT, GAMEX_BOW_LIMIT);
+        }
+    }
+    float press = st3.z, pressVelocity = st3.w;
+    GamexSpring(press, pressVelocity, pressTarget, GAMEX_CLEAR_ATTACK, GAMEX_CLEAR_RELEASE, GAMEX_CLEAR_DAMPING, 20.0, 20.0, dt);
+    press = clamp(press, -0.3, 1.2);
+    if (rootTarget <= 0.0 && abs(theta) < 2e-4 && abs(omega) < 2e-3)
+        theta = omega = 0.0;
+    if (bowTarget <= 0.0 && abs(bow) < 2e-4 && abs(bowVelocity) < 2e-3 && theta == 0.0)
+        bow = bowVelocity = 0.0;
+    if (pressTarget <= 0.0 && abs(press) < 2e-3 && abs(pressVelocity) < 2e-2)
+        press = pressVelocity = 0.0;
+    bool active = theta != 0.0 || omega != 0.0 || bow != 0.0 || bowVelocity != 0.0 || press != 0.0 || pressVelocity != 0.0;
+    st0 = float4(theta, omega, leanDirection);
+    st1 = float4(side, rootTarget, targetNeed);
+    st3 = float4(bow, bowVelocity, press, pressVelocity);
+    st5.z = omega;
+    state.a = float4(leanDirection, theta, active ? H : 0.0);
+    state.b = float4(bow, press, st5.x, st5.y);
+    state.c = st4;
+}
+
+void GamexSolidStep(float3 pivot, float s, float4 stem, float crownReach, inout float4 st0, inout float4 st1, float dt, int count, out GamexPushState state)
+{
+    // st0: (sense, press, direction toward the body x, z); st1: (band top of the body, seconds since the last contact, press velocity,
+    // bruise). W1 R2 (review of the R1 captures): the contact rises from the edge of the fir's measured crown in the push band (R1 took
+    // 3.0 m x scale for young firs, a quarter beyond their crowns, so boughs swung before any was touched); the press is a spring toward
+    // it (R1's decayed with the field's tau over about 3 s, rubbery), with a small bruise that relaxes over a few seconds.
+    float sense = st0.x, press = st0.y;
+    float2 direction = st0.zw;
+    float bandTop = st1.x, age = st1.y, velocity = st1.z, bruise = st1.w;
+    float crown = crownReach > 0.0 ? crownReach : stem.w * s;
+    float contact = 0.0, contactBand = bandTop;
+    float2 contactDirection = direction;
+    float contactSense = sense;
+    for (int i = 0; i < count; i++)
+    {
+        float4 segment = _Stamps[2 * i];
+        float4 body = _Stamps[2 * i + 1];
+        if (body.z <= 0.0 || body.y < pivot.y + 0.2)
+            continue;
+        float2 a = segment.xy, ab = segment.zw - segment.xy;
+        float lengthSq = dot(ab, ab);
+        float t = lengthSq > 1e-8 ? saturate(dot(pivot.xz - a, ab) / lengthSq) : 0.0;
+        float2 toAxis = (a + ab * t) - pivot.xz;
+        float d = length(toAxis);
+        float outer = crown + body.x;   // the body's surface at the crown's edge
+        if (d >= outer)
+            continue;
+        float c = saturate((outer - d) / GAMEX_SOLID_RAMP) * body.z * smoothstep(pivot.y + 0.2, pivot.y + 0.6, body.y);
+        if (c <= contact)
+            continue;
+        contact = c;
+        contactBand = body.y;
+        if (d > 1e-3) contactDirection = toAxis / d;
+        // A bough from the trunk toward the body's axis is carried along the body's travel: a positive swing about +Y moves a point
+        // (x, z) toward (z, -x). The sense is chosen at first contact and held while the press lasts.
+        float2 v = _StampVelocity[i].xy;
+        if (sense == 0.0 || age > GAMEX_SOLID_MEMORY)
+            contactSense = length(v) > 0.1 ? (toAxis.y * v.x - toAxis.x * v.y >= 0.0 ? 1.0 : -1.0) : (sense != 0.0 ? sense : 1.0);
+    }
+    if (contact > 0.0)
+    {
+        sense = contactSense;
+        bandTop = contactBand;
+        age = 0.0;
+        direction = dot(direction, direction) < 0.5 || abs(press) < 1e-3 ? contactDirection : normalize(direction + (contactDirection - direction) * saturate(6.0 * dt) + 1e-6);
+    }
+    else
+        age += dt;
+    bruise = max(0.0, max(bruise * exp(-dt / GAMEX_SOLID_BRUISE_TAU) - 0.02 * dt, GAMEX_SOLID_BRUISE * contact));
+    GamexSpring(press, velocity, max(contact, bruise), GAMEX_SOLID_ATTACK, GAMEX_SOLID_RELEASE, GAMEX_SOLID_DAMPING, 20.0, 20.0, dt);
+    if (contact <= 0.0 && bruise <= 0.0 && abs(press) < 2e-3 && abs(velocity) < 2e-2)
+        press = velocity = 0.0;
+    if (press == 0.0 && velocity == 0.0 && age > GAMEX_SOLID_MEMORY)
+        sense = 0.0;
+    st0 = float4(sense, press, direction);
+    st1 = float4(bandTop, age, velocity, bruise);
+    state = (GamexPushState)0;
+    // Texel 3: (press, signed; direction toward the body; the sense times the body's band top + 1000: 0 while the sense is unknown).
+    if (sense != 0.0)
+        state.a = float4(press, direction, sense * (bandTop + 1000.0));
+}
+
+[numthreads(64, 1, 1)]
+void Instances(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _InstanceCount)
+        return;
+    uint b = 8u * id.x;
+    float4 pivotScale = _InstanceStatic[b];
+    float4 row0 = _InstanceStatic[b + 1u], row1 = _InstanceStatic[b + 2u], row2 = _InstanceStatic[b + 3u];
+    float3x3 w2o = float3x3(row0.xyz, row1.xyz, row2.xyz);
+    float4 sway = _InstanceStatic[b + 4u];
+    GamexInstance inst = GamexInstanceAnalytic(pivotScale.xyz, pivotScale.w, _InstanceTime, sway, _InstanceStatic[b + 5u],
+                                               _InstanceStatic[b + 6u], w2o, false);
+    float4 stem = _InstanceStatic[b + 7u];
+    float s = pivotScale.w;
+    uint k0 = GAMEX_STATE_STRIDE * id.x;
+    bool integrate = _InstanceStep.x > 0.5;
+    float dt = max(_InstanceStep.y, 0.0);
+    uint flags = (uint)(_InstanceStep.w + 0.5);
+
+    // The wind's dynamics (W1 R2).
+    float W = inst.wind;
+    float4 wd = _InstanceState[k0 + 2u];
+    if (integrate)
+    {
+        if ((flags & 1u) != 0u || (flags & 2u) != 0u || wd.w < 0.5)
+            wd = float4(W, 0.0, W, 1.0);
+        else
+        {
+            float fN = inst.trunkFrequency > 0.0 ? inst.trunkFrequency : inst.branchFrequency;
+            float wn = GAMEX_TAU * max(fN, 0.05);
+            float h = min(dt, 0.1) * 0.25;
+            [unroll] for (int k = 0; k < 4; k++)
+            {
+                wd.y += (wn * wn * (W - wd.x) - 2.0 * GAMEX_WIND_DAMPING * wn * wd.y) * h;
+                wd.x += wd.y * h;
+            }
+            float release = GAMEX_WIND_RELEASE / max(inst.branchFrequency, 0.4);
+            wd.z += (W - wd.z) * (1.0 - exp(-dt / (W > wd.z ? GAMEX_WIND_ATTACK : release)));
+        }
+        _InstanceState[k0 + 2u] = wd;
+    }
+    float lean = wd.w > 0.5 ? wd.x : W, amplitude = wd.w > 0.5 ? wd.z : W;
+    if ((flags & 2u) != 0u)
+        lean = amplitude = W;
+    float3 trunk = float3(0.0, 0.0, 0.0);
+    if (sway.x > 0.0 && sway.y > 0.0)
+        trunk = sway.x * (inst.dir * (0.6 * lean + 0.4 * inst.osc * amplitude) + inst.cross * (inst.crossOsc * amplitude));
+
+    GamexPushState state = (GamexPushState)0;
+    bool sapling = GamexIsSapling(stem, s), solid = !sapling && stem.w > 0.0;
+    if (sapling || solid)
+    {
+        float4 st0 = _InstanceState[k0], st1 = _InstanceState[k0 + 1u];
+        float H = row0.w > 0.0 ? row0.w : 6.5;
+        float crownReach = row2.w;
+        if (integrate)
+        {
+            int count = min((int)_InstanceStep.z, GAMEX_MAX_STAMPS);
+            // An if, not ?: (HLSL evaluates both sides of ?:, and both steps write the state).
+            if (sapling)
+            {
+                float4 st3 = _InstanceState[k0 + 3u], st4 = _InstanceState[k0 + 4u], st5 = _InstanceState[k0 + 5u];
+                GamexSaplingStep(pivotScale.xyz, s, stem, H, crownReach, st0, st1, st3, st4, st5, dt, count, state);
+                _InstanceState[k0 + 3u] = st3;
+                _InstanceState[k0 + 4u] = st4;
+                _InstanceState[k0 + 5u] = st5;
+            }
+            else
+                GamexSolidStep(pivotScale.xyz, s, stem, crownReach, st0, st1, dt, count, state);
+            _InstanceState[k0] = st0;
+            _InstanceState[k0 + 1u] = st1;
+        }
+        else if (sapling)
+        {
+            float4 st3 = _InstanceState[k0 + 3u];
+            bool active = st0.x != 0.0 || st0.y != 0.0 || st3.x != 0.0 || st3.y != 0.0 || st3.z != 0.0 || st3.w != 0.0;
+            float4 st5 = _InstanceState[k0 + 5u];
+            state.a = float4(st0.zw, st0.x, active ? H : 0.0);
+            state.b = float4(st3.x, st3.z, st5.x, st5.y);
+            state.c = _InstanceState[k0 + 4u];
+        }
+        else if (st0.x != 0.0)
+            state.a = float4(st0.y, st0.zw, st0.x * (st1.x + 1000.0));
+    }
+    uint slot = id.x + 1u;
+    _InstanceOut[GamexInstanceTexel(slot, 0u)] = float4(trunk, amplitude);
+    _InstanceOut[GamexInstanceTexel(slot, 1u)] = float4(inst.branchPhase, inst.branchPhase2, inst.branchPhase3, inst.activityPhase);
+    _InstanceOut[GamexInstanceTexel(slot, 2u)] = float4(inst.flutterPhase, 0.0, 0.0, 0.0);
+    _InstanceOut[GamexInstanceTexel(slot, 3u)] = state.a;
+    _InstanceOut[GamexInstanceTexel(slot, 4u)] = state.b;
+    _InstanceOut[GamexInstanceTexel(slot, 5u)] = state.c;
+}
