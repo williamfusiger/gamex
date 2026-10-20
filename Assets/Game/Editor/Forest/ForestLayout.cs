@@ -27,6 +27,13 @@ namespace Gamex.EditorTools
         public static readonly Vector2 SpawnXZ = new Vector2(0f, -62f);
         public const float SpawnYaw = 0f;
 
+        /// <summary>
+        /// W1 (spec 2.9): young firs at or below this instance scale are the understorey cohort whose thin stems may let bodies
+        /// through. Read by the wind profile now (the shader leans such a sapling over under a push) and by I2's navigation rule.
+        /// 0.705 lies 3.7e-3 from every planned instance scale. Recommended, not yet confirmed by the owner (0 = none, today's behaviour).
+        /// </summary>
+        public const float PassableYoungFirMaxScale = 0.705f;
+
         public static readonly Vector2[]
             Trail =
             {

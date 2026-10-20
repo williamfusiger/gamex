@@ -213,9 +213,22 @@ namespace Gamex.Tests.Forest
                             continue;
                         checkedMaterials++;
                         string label = AssetDatabase.GetAssetPath(material);
+                        // W1 (spec 8.6): the wind graph always samples its normal map and has no _NORMALMAP keyword; on it the
+                        // keyword is replaced by "the _NormalMap slot holds the material's normal map". Everything else is unchanged.
+                        bool windGraph = ForestWindShaderGraphs.IsWindShader(material.shader);
                         foreach (string keyword in keywords)
+                        {
+                            if (windGraph && keyword == "_NORMALMAP")
+                            {
+                                Texture normal = material.GetTexture("_NormalMap");
+                                string expected = ForestManifest.AssetPath(manifest.maps.normal);
+                                if (normal == null || AssetDatabase.GetAssetPath(normal) != expected)
+                                    problems.Add($"{label}: the _NormalMap slot holds {(normal != null ? AssetDatabase.GetAssetPath(normal) : "nothing")}, not {expected}");
+                                continue;
+                            }
                             if (!material.IsKeywordEnabled(keyword))
                                 problems.Add($"{label}: keyword {keyword} is off");
+                        }
                         if (material.renderQueue != 2475)
                             problems.Add($"{label}: render queue is {material.renderQueue}, expected 2475 (alpha test)");
                         if (!material.HasProperty("_CullMode") || material.GetFloat("_CullMode") != 0f)

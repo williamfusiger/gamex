@@ -23,7 +23,8 @@ namespace Gamex.EditorTools
     /// player sees is the PlayMode test Render_ReferenceStills.
     ///
     /// N1: the player's torch rides on the capture camera at the hand's pose, switched on as the game starts it
-    /// (-captureFlashlight off renders without it); -captureViews a,b,c renders only those viewpoints;
+    /// (-captureFlashlight off renders without it); -captureViews a,b,c renders only those viewpoints; -captureCullDistance N (W1 I2b)
+    /// culls the forest at N m as the night preset does in play;
     /// -forestPreset Name captures another preset of the scene.
     /// </summary>
     public static class ForestCapture
@@ -208,8 +209,18 @@ namespace Gamex.EditorTools
                 Camera camera = null;
                 ForestFlashlight.CaptureTorch torch = null;
                 var forced = new List<LODGroup>();
+                ForestCullDistance.Restore cull = null;
                 try
                 {
+                    // W1 I2b: -captureCullDistance N renders with the forest culled at N m (ForestCullDistance, which the night preset applies
+                    // in play only), for the before-and-after night captures of the owner's decision; undone below, the scene never saved.
+                    float cullMetres = float.Parse(ForestArgs.Value("-captureCullDistance", "0"), System.Globalization.CultureInfo.InvariantCulture);
+                    if (cullMetres > 0f)
+                    {
+                        cull = ForestCullDistance.Apply(SceneManager.GetActiveScene(), cullMetres);
+                        session.MarkModified();
+                        Debug.Log($"Forest capture: forest culled at {Mathf.Max(ForestCullDistance.Minimum, cullMetres)} m ({cull.Count} LOD groups).");
+                    }
                     if (!string.IsNullOrEmpty(wantedPreset) && wantedPreset != originalPreset)
                     {
                         if (!ForestLighting.ApplyPreset(wantedPreset))
@@ -290,6 +301,7 @@ namespace Gamex.EditorTools
                     foreach (LODGroup group in forced)
                         if (group != null)
                             group.ForceLOD(-1);
+                    cull?.Undo();
                     torch?.Dispose();
                     if (camera != null)
                         Object.DestroyImmediate(camera.gameObject);

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 
@@ -31,7 +32,7 @@ namespace Gamex.EditorTools
         public static string[] ForceTriplanar = Array.Empty<string>();  // default empty: materials that take their noUvFallback even with UVs (section 5.5)
 
         // Part of every stamp. Raise it when the kit code changes what it writes, so old prefabs are rebuilt.
-        internal const string ToolVersion = "kit-10";   // kit-10: M4 review 2: shoot cards for young and tall firs. kit-9: M4 review 1: per-tree crown core, trunk_c root skirt in ground material. kit-8: tall firs (M4): glTF geometry without UVs for a noUvFallback material, LOD group size cap. kit-7: twig cards from 14 m (M3 review 1)
+        internal const string ToolVersion = "kit-12";   // kit-12: W1 R2: fern and grass anchors in UV2 (52 B). kit-11: W1 wind colours, the compact 44 B layout, __mv twins on pushed levels. kit-10: M4 review 2: shoot cards for young and tall firs. kit-9: M4 review 1: per-tree crown core, trunk_c root skirt in ground material. kit-8: tall firs (M4): glTF geometry without UVs for a noUvFallback material, LOD group size cap. kit-7: twig cards from 14 m (M3 review 1)
 
         // The greybox seed. It only feeds hashes and patch layouts, so the kit is the same on every run.
         internal const int Seed = 1993;
@@ -697,6 +698,41 @@ namespace Gamex.EditorTools
             return Mathf.Min(objectSize, cap);
         }
 
+        /// <summary>
+        /// W1 (spec 2.3): how many of a prefab's nearest levels draw the "__mv" material twins (MotionVectors pass on): the levels that
+        /// pushes move by 4 to 8 px a frame. Young firs' scan level, fern patches' and clumps' LOD0, grass; none for tall firs and
+        /// static props. I2's TAA ghosting check may change it.
+        /// I2 (issues/W1-runtime.md): the check put young firs at 2. At fir_close, in gusty wind (0.9), the near young fir is drawn at
+        /// LOD1 and the scan-level set left it without vectors: ghost 8.96 % of the moving mask against 6.12 % with the young firs'
+        /// levels on (all-on 6.14 %), 2.8 points over the 2 % tolerance (Wind_TaaGhosting, captures/w1-motion-try3/ghost).
+        /// I2b (owner's decision of 2026-10-17, issues/W1-runtime.md section 11): back to 1, the scan level only. The 200 % crops showed
+        /// no trail or double image on the near fir without LOD1's vectors (the measured difference is TAA's sharpness on moving needles),
+        /// and the pass on LOD1 cost part of the 0.55 ms motion vector pass at pano_90. Wind_TaaGhosting checks the crops' measure.
+        /// W1 R1 (review of the I2c captures, issues/W1-runtime.md section 13): 2 again. Without LOD1's vectors the lit young firs from
+        /// 2 to 5 m out to 8 to 18 m carried none (about two thirds of the moving pixels at fir_close), their needles softened in every
+        /// gust, and the TAA treatment changed at the LOD0 to LOD1 switch; the budget now has the room (spec 7.4's restore order).
+        /// </summary>
+        public static int MotionVectorLevels(string prefabId) => MotionVectorLevelsOf(ClassOf(prefabId));
+
+        static int MotionVectorLevelsOf(ForestClass cls)
+        {
+            switch (cls)
+            {
+                case ForestClass.YoungFir:
+                    // W1 R1 (review of the I2c captures): 1 -> 2, the scan level and LOD1 (spec 7.4: quality back while 0.3 ms or more is
+                    // spare). The owner's (iii) took LOD1's motion vectors off when the budget was short; with them off, TAA reprojected the
+                    // swaying young firs 2.2 to 18 m away (the torch's working range) by camera motion only, so their needles softened with
+                    // every gust, and pushes on LOD1 lost their Custom Velocity. I2c's margin (1.3 to 1.44 ms) pays for the pass.
+                    return 2;
+                case ForestClass.FernPatch:
+                case ForestClass.FernClump:
+                case ForestClass.GrassPatch:
+                    return 1;
+                default:
+                    return 0;
+            }
+        }
+
         /// <summary>Changes whenever a number in this file changes, so stamped prefabs are rebuilt.</summary>
         internal static string Hash()
         {
@@ -711,6 +747,17 @@ namespace Gamex.EditorTools
             }
 
             Add("generator", UseUnityGenerator);
+            // W1: the wind data's version and constants, and the motion-vector level table.
+            Add("wind", ForestWindData.Version);
+            AddAll("windData", new[]
+            {
+                ForestWindData.YoungClassHeight, ForestWindData.TallClassHeight, ForestWindData.BranchReach, ForestWindData.FlutterReach,
+                ForestWindData.SectionStep, ForestWindData.YoungPhaseCell, ForestWindData.TallPhaseCell, ForestWindData.PhaseSectors,
+                ForestWindData.PhaseRange, ForestWindData.RootSampleStep, ForestWindData.RootRoundMin, ForestWindData.RootRoundMax,
+                ForestWindData.RootRoundRun, ForestWindData.RootSearch, ForestWindData.RootRamp,
+            });
+            Add("mvLevels", string.Join(",", new[] { ForestClass.YoungFir, ForestClass.TallFir, ForestClass.FernPatch, ForestClass.FernClump, ForestClass.GrassPatch }
+                .Select(cls => cls + ":" + MotionVectorLevelsOf(cls))));
             Add("crossFade", UseCrossFade);
             Add("byGroup", ThinByGroup);
             Add("core", CrownCoreFromLod);

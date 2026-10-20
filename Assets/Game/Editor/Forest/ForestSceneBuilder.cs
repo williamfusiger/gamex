@@ -80,6 +80,8 @@ namespace Gamex.EditorTools
                 int instances = ForestWorldRig.Instantiate(plan, environment.transform);
                 ForestWorldRig.BuildBounds(environment.transform);
                 ForestWorldRig.BuildGameplayAnchors(terrain);
+                // W1 I2: the interaction field and the density map (outside Environment: nothing in it is level geometry).
+                ForestWindRig.BuildFoliage(plan);
 
                 // 9.
                 Physics.SyncTransforms();

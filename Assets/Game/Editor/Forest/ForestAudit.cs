@@ -21,7 +21,7 @@ namespace Gamex.EditorTools
     ///   material.missing, material.shader, material.pipeline, material.shader-error,
     ///   material.diffusion-profile, material.texture-slots, texture.normal-type, texture.mask-linear
     ///   prefab.bounds
-    ///   placement.grounding, placement.instance, placement.tree-base
+    ///   placement.grounding, placement.instance, placement.tree-base, placement.passable-stem
     ///   spawn.position, spawn.clearance
     ///   terrain.trail-slope, terrain.core-slope
     ///   lighting.volume, lighting.shadow-light, lighting.sky, lighting.exposure
@@ -62,6 +62,7 @@ namespace Gamex.EditorTools
             public float minSpawnMarginMetres;       // smallest "distance to the spawn minus clearance" over all colliders
             public float minCorridorMarginMetres;    // smallest "distance to a trail minus clearance" over all colliders
             public string physicalCorridors;         // "free" | "blocked" | "not run: <why>"
+            public int passableStems;                // W1 I2: young firs whose trunk capsule is disabled by the thin-stem rule
             public float kitBakeSeconds;             // sum over the kit report
             public string textureCompressionOverride;
             public Timing[] timings = Array.Empty<Timing>();
@@ -76,7 +77,7 @@ namespace Gamex.EditorTools
         // HDRP/Lit material types that read a diffusion profile (MaterialId.LitSSS and LitTranslucent).
         const int MaterialIdSubsurface = 0, MaterialIdTranslucent = 5;
 
-        const string TintSuffix = "__tint1", TriplanarSuffix = "__triplanar";
+        const string TintSuffix = "__tint1", TriplanarSuffix = "__triplanar", MotionVectorSuffix = "__mv";
 
         // One finding per check with a count and a few examples reads better than 2,700 findings.
         const int MaxExamples = 5;
@@ -482,14 +483,20 @@ namespace Gamex.EditorTools
                 collector.Add(Error, "texture.mask-linear", $"{importer.assetPath} is the mask map of {usedBy} but is imported as sRGB; mask data must be linear.");
         }
 
-        // The manifest material a kit material asset was built from: its file name without the variant suffix.
-        static ForestMaterialEntry ManifestEntryOf(Material material)
+        /// <summary>
+        /// The manifest material a kit material asset was built from: its file name without the variant suffix. W1: a trailing
+        /// "__mv" (the motion-vector twin) is stripped first, then "__tint1" or "__triplanar"; "__crowncore" stays unresolved (it has
+        /// no maps of its own by design). Public for WindMaterials_ResolveToTheManifest.
+        /// </summary>
+        public static ForestMaterialEntry ManifestEntryOf(Material material)
         {
             string path = AssetDatabase.GetAssetPath(material);
             if (string.IsNullOrEmpty(path) || !path.StartsWith(ForestPaths.KitMaterials + "/", StringComparison.Ordinal))
                 return null;
 
             string name = Path.GetFileNameWithoutExtension(path);
+            if (name.EndsWith(MotionVectorSuffix, StringComparison.Ordinal))
+                name = name.Substring(0, name.Length - MotionVectorSuffix.Length);
             if (name.EndsWith(TintSuffix, StringComparison.Ordinal))
                 name = name.Substring(0, name.Length - TintSuffix.Length);
             else if (name.EndsWith(TriplanarSuffix, StringComparison.Ordinal))
@@ -613,6 +620,8 @@ namespace Gamex.EditorTools
             var misplaced = new Tally();
             var absent = new Tally();
             var treeBases = new Tally();
+            var stems = new Tally();
+            report.passableStems = 0;
             var prefabBuilt = new Dictionary<string, bool>();
             float worst = 0f;
 
@@ -641,6 +650,18 @@ namespace Gamex.EditorTools
                     string problem = InstanceProblem(instance, placement);
                     if (problem != null)
                         misplaced.Add($"#{i} {instance.name}: {problem}");
+                    // W1 I2 (spec 2.9): only the thinnest young firs let bodies through; every other trunk blocks the player and the NavMesh.
+                    if (isTree)
+                    {
+                        var capsule = instance.GetComponent<CapsuleCollider>();
+                        bool passable = ForestWindRig.IsPassable(placement);
+                        if (capsule == null)
+                            stems.Add($"#{i} {instance.name} has no trunk capsule");
+                        else if (capsule.enabled == passable)
+                            stems.Add($"#{i} {instance.name} (scale {F(placement.scale, "0.0000")}): capsule {(capsule.enabled ? "enabled" : "disabled")}, the rule says {(passable ? "passable" : "solid")}");
+                        else if (passable)
+                            report.passableStems++;
+                    }
                 }
                 else
                 {
@@ -657,6 +678,8 @@ namespace Gamex.EditorTools
                 $"placement(s) are not at terrain height minus their sink within {F(ForestBudgets.GroundingToleranceMetres)} m: floating, buried, or grounded on stale heights");
             treeBases.Emit(collector, Error, "placement.tree-base", "tree(s) have their pivot above the terrain somewhere on the trunk-base circle, so the trunk would show a gap");
             misplaced.Emit(collector, Error, "placement.instance", "instance(s) do not match their placement");
+            stems.Emit(collector, Error, "placement.passable-stem",
+                $"tree(s) whose trunk capsule does not follow the thin-stem rule (disabled exactly on young firs of scale at most {F(ForestLayout.PassableYoungFirMaxScale, "0.000")})");
             absent.Emit(collector, Error, "placement.instance", "placement(s) have a built prefab but no instance in the scene");
 
             var counts = new List<Report.ClassCount>();

@@ -43,7 +43,31 @@ namespace Gamex.EditorTools
             public float whiteBalanceTemperature, saturation, contrast, bloomIntensity, grainIntensity, vignetteIntensity; public string grainType;
             // Lift Gamma Gain's gamma (the luminance channel, w): above 0 it raises the dark tones. 0 adds no override (N1).
             public float shadowGamma;
+
+            // W1 (spec 2.7): the wind of the preset. windBearing is the direction the wind blows toward, degrees clockwise from +Z;
+            // between gusts W is windCalm, at a gust's crest windGustPeak (before the run-time wander); gust fronts windGustWavelength
+            // metres apart travel downwind at windGustSpeed m/s. The run-time controller (I2) reads these fields.
+            public float windBearing, windCalm, windGustPeak, windGustWavelength, windGustSpeed;
+
+            // W1 I2b (owner's decision of 2026-10-17): the forest's cull distance under this preset, metres for the player's field of view
+            // (ForestCullDistance, at least 40); 0 keeps the kit's own (trees and logs about 55 m at scale 1).
+            public float forestCullDistance;
+
+            /// <summary>
+            /// The preset's wind as the shader reads it: seed 0.37, the shipped distances of spec 7.2 (fade 21 to 30 m, flutter
+            /// within 10 m, moon cascades at rest), without the wander the run-time controller adds.
+            /// </summary>
+            public ForestWindState WindState() => new ForestWindState
+            {
+                gustBearing = windBearing, leanBearing = windBearing,
+                calm = windCalm, peak = windGustPeak, gustWavelength = windGustWavelength, gustSpeed = windGustSpeed, gustSeed = WindSeed,
+                fadeStart = 0.7f * WindFadeEnd, fadeEnd = WindFadeEnd, flutterEnd = WindFlutterEnd, moonCascades = 0,
+                torchShadowEnd = 0f, timeOffset = 0f,
+            };
         }
+
+        /// <summary>W1 shipped wind constants (spec 7.2): the gust seed, the animation distance and the flutter distance.</summary>
+        public const float WindSeed = 0.37f, WindFadeEnd = 30f, WindFlutterEnd = 10f;
 
         /// <summary>
         /// Null for an unknown name. Every call returns a new record, so a caller that changes a field
@@ -145,6 +169,13 @@ namespace Gamex.EditorTools
             grainType = "Thin1",
             grainIntensity = 0.10f,
             vignetteIntensity = 0.20f,
+
+            // W1 (spec 2.7): a windier preset than the night, without a lull target.
+            windBearing = 70f,
+            windCalm = 0.10f,
+            windGustPeak = 0.70f,
+            windGustWavelength = 150f,
+            windGustSpeed = 5.0f,
         };
 
         // N1 (build/issues/N1-night.md): a moonlit night in mist, the main mood of the game. The player carries a torch
@@ -171,10 +202,15 @@ namespace Gamex.EditorTools
             keyElevation = 50f,
             keyBearing = 135f,
 
-            // As OvercastMist (M3 knob 2): the cascades cost the same at night.
-            shadowDistance = 50f,
-            cascades = 3,
-            cascadeSplits = new Vector3(0.12f, 0.35f, 0.70f),
+            // W1 I2c (the owner's answer of 2026-10-17 to issues/W1-runtime.md 11.12, spec W1 7.4 step 5 option (a)): the moon's shadows
+            // end at 30 m with 2 cascades, to fund the wind (N1 had 50 m and 3 cascades, as OvercastMist, M3 knob 2). The first split stays
+            // at 6 m (0.2 x 30), where N1's was, so the shadows the player sees up close keep their resolution; the second cascade covers
+            // 6 to 30 m (N1: 6 to 17.5 and 17.5 to 50 m). HDRP fades the last cascade out over its last 20 %, so there is no line where they
+            // end. The third split is read only with 3 or more cascades; it keeps N1's 17.5 m. Night only: OvercastMist keeps its shadows.
+            // Before and after: captures/w1-moon-before, w1-moon-after (issues/W1-runtime.md section 12).
+            shadowDistance = 30f,
+            cascades = 2,
+            cascadeSplits = new Vector3(0.20f, 17.5f / 30f, 0.90f),
 
             // Longer than the day's 20 m, so the beam has 20 to 30 m to work with: a grey card (albedo 0.25) in the hot spot
             // reads 0.3 to 0.5 at 20 to 30 m, against 0.03 to 0.08 without the torch (section 3). At 50 to 55 m, where every
@@ -217,6 +253,24 @@ namespace Gamex.EditorTools
             grainType = "Medium1",
             grainIntensity = 0.30f,
             vignetteIntensity = 0.35f,
+
+            // W1 (spec 2.7): misty nights are calm, and the scary beat is a gust rolling through a still stand. W rests at 0.03 and
+            // rises to 0.55 in gusts every 24 to 68 s (median 36 s, a crest every 34 s at a point), still 64 % of the time
+            // (B/probes/W1/rev/gust_tune.py, final_check.py; pinned by WindGlobals_GustHasLullsAndTravellingFronts).
+            windBearing = 70f,
+            windCalm = 0.03f,
+            windGustPeak = 0.55f,
+            windGustWavelength = 120f,
+            windGustSpeed = 3.5f,
+
+            // W1 I2b (owner's decision of 2026-10-17, issues/W1-runtime.md section 11): at night only the forest could end nearer than the
+            // kit's 50 to 55 m (ForestCullDistance, not under 40 m), if the night captures with the torch on and off showed no difference
+            // beyond run-to-run noise. At 45 m they did not (torch on 17, off 25 of 32 views over the noise; the far treeline thins against
+            // the moonlit mist: captures/w1-cull45-on, -off), so the night keeps the kit's distances until the owner decides.
+            forestCullDistance = NightCullDistance,
         };
+
+        /// <summary>W1 I2b: the night preset's forest cull distance (m); 0 = the kit's own (45 m measured, visible, not shipped).</summary>
+        public const float NightCullDistance = 0f;
     }
 }

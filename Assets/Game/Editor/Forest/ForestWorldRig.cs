@@ -37,6 +37,8 @@ namespace Gamex.EditorTools
             var prefabs = new Dictionary<string, GameObject>();
             int classes = Enum.GetValues(typeof(ForestClass)).Length;
             int[] created = new int[classes], skipped = new int[classes];
+            int passable = 0;
+            float passableMin = float.PositiveInfinity, passableMax = 0f;
 
             for (int i = 0; i < plan.placements.Length; i++)
             {
@@ -81,6 +83,13 @@ namespace Gamex.EditorTools
                 }
                 if (placement.tint != 0)
                     ForestPrefabs.ApplyTint(instance, placement.tint);
+                // W1 I2 (spec 2.9): the thinnest young firs let bodies through; the NavMesh bake (stage 9) then leaves them no hole.
+                if (ForestWindRig.ApplyPassableStem(instance, placement))
+                {
+                    passable++;
+                    passableMin = Mathf.Min(passableMin, placement.scale);
+                    passableMax = Mathf.Max(passableMax, placement.scale);
+                }
                 created[(int)placement.cls]++;
             }
 
@@ -92,6 +101,23 @@ namespace Gamex.EditorTools
                     Debug.Log($"ForestWorldRig: skipped {skipped[cls]} {(ForestClass)cls} placements whose prefabs are not built yet ({created[cls]} placed).");
             }
             Debug.Log($"ForestWorldRig: {total} instances from {plan.placements.Length} placements.");
+            Debug.Log(passable > 0
+                ? $"ForestWorldRig: {passable} of {created[(int)ForestClass.YoungFir]} young firs are passable (scale {passableMin:0.0000} to {passableMax:0.0000}, at most {ForestLayout.PassableYoungFirMaxScale}): trunk capsule disabled on the instance."
+                : $"ForestWorldRig: no passable young firs (threshold {ForestLayout.PassableYoungFirMaxScale}).");
+            if (passable > 0)
+            {
+                // Spec 2.9: the stems the rule lets bodies through, measured on the scan level at 1 m above the ground (world), at the
+                // smallest and the largest passable scale.
+                var stems = new List<string>();
+                foreach (string prefabId in ForestPrefabIds.YoungFirs)
+                {
+                    if (!ForestPrefabs.Exists(prefabId)) continue;
+                    float thin = ForestWindRig.StemRadius(prefabId, 1f / passableMin) * passableMin;
+                    float thick = ForestWindRig.StemRadius(prefabId, 1f / passableMax) * passableMax;
+                    stems.Add($"{prefabId} {thin * 100f:0.0} to {thick * 100f:0.0} cm");
+                }
+                Debug.Log($"ForestWorldRig: passable stems' radius at 1 m, from scale {passableMin:0.000} to {passableMax:0.000}: {string.Join(", ", stems)}.");
+            }
             return total;
         }
 
@@ -225,6 +251,8 @@ namespace Gamex.EditorTools
             var interactor = root.AddComponent<PlayerInteractor>();
             WireRef(controller, "cameraPivot", pivot);
             WireRef(interactor, "holdPoint", holdPoint);
+            // W1 I2: the body parts foliage (its own child, so the rig comparison can leave it out as it does the torch).
+            ForestWindRig.AddPlayerPusher(root);
             return root;
         }
 

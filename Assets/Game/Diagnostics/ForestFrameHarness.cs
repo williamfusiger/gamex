@@ -53,6 +53,21 @@ namespace Gamex.Diagnostics
     ///   -forestMeasureTorchAB                  N1: paired measurement, free of the drift between runs: every view is recorded three
     ///                                          times in a row, the torch off ("&lt;view&gt;|off"), on ("|on") and on without shadows
     ///                                          ("|noshadow"), each after its own warm-up. The worst-view figures cover the "|on" rows.
+    ///   -forestMeasureWindAB &lt;s1,s2,...&gt;     W1: paired measurement of wind states, every view recorded once per state in a row
+    ///                                          ("&lt;view&gt;|&lt;state&gt;"), each after its own warm-up; the torch on. States (spec 7.3): off
+    ///                                          (strength 0, field off, motion vector pass off on every wind material), on (as shipped),
+    ///                                          mvall, nomv, mvyoung (the pass on every young-fir level), moon1, moon2, flutter21,
+    ///                                          gusttex, torch15, d25, d20, d15, nofield, push (a
+    ///                                          raptor-sized pusher walking 4 to 8 m in front of the camera), noinst (W1 I2b: every
+    ///                                          vertex computes its instance's terms itself, as in I2), cull&lt;N&gt; (W1 I2b: every
+    ///                                          forest LOD group ends at N m, at least 40), nocull (the scene's night cull off),
+    ///                                          moon50 (W1 I2c: N1's moon shadows, 50 m and 3 cascades, on the scene's volumes),
+    ///                                          sprint, pair, raptors3 (W1 R1: a player sprinting 6 m/s back and forth along 24 m
+    ///                                          across the view 6 m ahead; the player standing at the camera and a raptor walking
+    ///                                          16 to 20 m ahead; three raptors walking 4 to 8, 10 to 14 and 16 to 20 m ahead).
+    ///                                          "a+b" applies both on top of
+    ///                                          the shipped knobs. The worst-view figures cover the "|on" rows.
+    ///   -forestMeasureWind &lt;state&gt;           W1: one wind state (as above) for the whole run.
     /// </summary>
     public sealed class ForestFrameHarness : MonoBehaviour
     {
@@ -96,6 +111,7 @@ namespace Gamex.Diagnostics
             // the value), which the worst value above catches.
             public long trianglesMedian, verticesMedian, setPassMedian, shadowCastersMedian;
             public bool focusedThroughout;
+            public string wind;                  // W1: the wind state and knobs this view was recorded with
             public float[] frameMs;
             public float[] gpuMs;
         }
@@ -118,6 +134,7 @@ namespace Gamex.Diagnostics
             public bool torchShadows, torchVolumetric;
             public float torchRange;
             public int prewarmFrames, warmupFrames, recordedFrames, paceLag, denseFactor, denseCopies;
+            public string windStates, windController, windShipped, windMaterials;
             public string worstViewByMedian, worstViewByP95;
             public float worstMedianMs, worstP95Ms;
             public float floorMedianMs, floorP95Ms;
@@ -147,8 +164,245 @@ namespace Gamex.Diagnostics
 
         static bool HasFlag(string name) => Array.IndexOf(Environment.GetCommandLineArgs(), name) >= 0;
 
+        // ---- W1: wind states ----
+
+        Camera measureCamera;
+        string windDescription;
+        // mvyoung: the young firs' plain materials (every level beyond the scan) with the motion vector pass on; restored per state.
+        readonly Dictionary<Material, bool> youngPasses = new Dictionary<Material, bool>();
+        // W1 R1: the pushers of the push states (review of the I2c captures: one box around every stamp grew with the distance between
+        // bodies). Each walks its own path in front of the measurement camera (MoveProxies); kinds: 0 a raptor's loop, 1 a player's
+        // sprint back and forth across the view, 2 a player standing at the camera.
+        sealed class MeasureProxy { public FoliagePusher pusher; public int kind; public float centre, phase; }
+        readonly List<MeasureProxy> proxies = new List<MeasureProxy>();
+        string proxyMode = "";
+        // W1 I2b: the night cull of a state ("cull<N>": every forest LOD group ends at N m on top of the scene's) and the scene's own
+        // night cull components a state switched off ("nocull"); both undone when the next state is applied.
+        ForestCullDistance.Restore stateCull;
+        readonly List<ForestCullDistance> culledOff = new List<ForestCullDistance>();
+        // W1 I2c: "moon50" puts N1's moon shadows (50 m, 3 cascades, splits 0.12 / 0.35 / 0.70) back on the shadow settings of every
+        // enabled scene volume for one state, so the moon's saving (the owner's answer of 2026-10-17: 30 m and 2 cascades at night) and
+        // W1's own cost are paired within a view; undone when the next state is applied.
+        readonly List<(HDShadowSettings settings, float distance, int count, float split0, float split1, float split2)> moonRestore =
+            new List<(HDShadowSettings, float, int, float, float, float)>();
+
+        void RestoreMoon()
+        {
+            // The count first: a split is clamped by its neighbours only while enough cascades are in use.
+            foreach ((HDShadowSettings settings, float distance, int count, float split0, float split1, float split2) in moonRestore)
+            {
+                if (settings == null) continue;
+                settings.cascadeShadowSplitCount.value = count;
+                settings.maxShadowDistance.value = distance;
+                settings.cascadeShadowSplit0.value = split0;
+                settings.cascadeShadowSplit1.value = split1;
+                settings.cascadeShadowSplit2.value = split2;
+            }
+            moonRestore.Clear();
+        }
+
+        int ApplyMoon50()
+        {
+            foreach (Volume volume in FindObjectsByType<Volume>(FindObjectsInactive.Exclude))
+            {
+                if (!volume.isActiveAndEnabled || volume.sharedProfile == null) continue;
+                if (!volume.sharedProfile.TryGet(out HDShadowSettings shadows) || !shadows.maxShadowDistance.overrideState) continue;
+                moonRestore.Add((shadows, shadows.maxShadowDistance.value, shadows.cascadeShadowSplitCount.value,
+                    shadows.cascadeShadowSplit0.value, shadows.cascadeShadowSplit1.value, shadows.cascadeShadowSplit2.value));
+                shadows.cascadeShadowSplitCount.value = 3;
+                shadows.maxShadowDistance.value = 50f;
+                shadows.cascadeShadowSplit0.value = 0.12f;
+                shadows.cascadeShadowSplit1.value = 0.35f;
+                shadows.cascadeShadowSplit2.value = 0.70f;
+            }
+            return moonRestore.Count;
+        }
+
+        /// <summary>
+        /// Puts the wind into a named state of spec 7.3 (or "a+b": each token on top of the shipped knobs, in order); null when it
+        /// worked, else what is wrong. Always starts from the shipped state: knobs reset, motion vector pass as built, field on.
+        /// </summary>
+        string ApplyWind(string state)
+        {
+            ForestWind wind = ForestWind.Active;
+            FoliageInteractionField field = FoliageInteractionField.Active;
+            if (wind == null) return "no ForestWind is enabled";
+            wind.ResetKnobs();
+            ForestWind.SetMotionVectorPass(WindMotionVectors.Shipped);
+            foreach (KeyValuePair<Material, bool> entry in youngPasses)
+                if (entry.Key != null) entry.Key.SetShaderPassEnabled("MotionVectors", entry.Value);
+            youngPasses.Clear();
+            bool young = false;
+            if (field != null) field.FieldEnabled = true;
+            bool ownTerms = false;
+            stateCull?.Undo();
+            stateCull = null;
+            foreach (ForestCullDistance cull in culledOff)
+                if (cull != null) cull.enabled = true;
+            culledOff.Clear();
+            RestoreMoon();
+            bool moon50 = false;
+            int cullMetres = 0;
+            string push = "";
+            ForestWindKnobs k = wind.Knobs;
+            WindMotionVectors passes = WindMotionVectors.Shipped;
+            foreach (string raw in (state ?? "on").Split('+'))
+            {
+                string token = raw.Trim();
+                switch (token)
+                {
+                    case "on": break;
+                    case "off": k.strengthScale = 0f; k.fieldEnabled = false; passes = WindMotionVectors.None; break;
+                    case "mvall": passes = WindMotionVectors.All; break;
+                    case "nomv": passes = WindMotionVectors.None; break;
+                    case "mvyoung": young = true; break;
+                    case "moon1": k.moonCascades = 1; break;
+                    case "moon2": k.moonCascades = 2; break;
+                    case "flutter21": k.flutterEnd = 0.7f * k.fadeEnd; break;
+                    case "gusttex": k.gustTexture = true; break;
+                    case "nogusttex": k.gustTexture = false; break;
+                    case "torch15": k.torchShadowEnd = 15f; break;
+                    case "nofield": k.fieldEnabled = false; break;
+                    case "push": push = "push"; break;
+                    case "sprint": push = "sprint"; break;       // W1 R1: a player sprinting at 6 m/s across the view, 24 m back and forth
+                    case "pair": push = "pair"; break;           // W1 R1: the player at the camera and a raptor walking 18 m ahead
+                    case "raptors3": push = "raptors3"; break;   // W1 R1: three raptors walking 6, 12 and 18 m ahead
+                    case "noinst": ownTerms = true; break;   // W1 I2b: every vertex computes its instance's terms itself (I2's way)
+                    case "moon50": moon50 = true; break;     // W1 I2c: N1's moon shadows (50 m, 3 cascades) for this state
+                    case "nocull":                             // W1 I2b: the scene's night cull off (the kit's own cull distances)
+                        foreach (ForestCullDistance cull in FindObjectsByType<ForestCullDistance>())
+                            if (cull.enabled) { cull.enabled = false; culledOff.Add(cull); }
+                        break;
+                    default:
+                        if (token.Length > 1 && token[0] == 'd' && int.TryParse(token.Substring(1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int metres) && metres > 0)
+                        {
+                            k.fadeEnd = metres;
+                            k.flutterEnd = Mathf.Min(k.flutterEnd, 0.7f * metres);
+                            break;
+                        }
+                        if (token.Length > 4 && token.StartsWith("cull", StringComparison.Ordinal) && int.TryParse(token.Substring(4), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cullAt) && cullAt > 0)
+                        {
+                            cullMetres = cullAt;
+                            break;
+                        }
+                        if (token.Length > 7 && token.StartsWith("flutter", StringComparison.Ordinal) && int.TryParse(token.Substring(7), NumberStyles.Integer, CultureInfo.InvariantCulture, out int flutter))
+                        {
+                            k.flutterEnd = Mathf.Min(flutter, 0.7f * k.fadeEnd);
+                            break;
+                        }
+                        return $"unknown wind state '{token}'";
+                }
+            }
+            wind.Knobs = k;
+            ForestWind.SetMotionVectorPass(passes);
+            if (young)
+                foreach (Material material in Resources.FindObjectsOfTypeAll<Material>())
+                {
+                    if (!ForestWind.IsWindMaterial(material) || !material.name.StartsWith("fir_sapling_medium", StringComparison.Ordinal)) continue;
+                    if (!youngPasses.ContainsKey(material)) youngPasses.Add(material, material.GetShaderPassEnabled("MotionVectors"));
+                    material.SetShaderPassEnabled("MotionVectors", true);
+                }
+            if (field != null) field.FieldEnabled = k.fieldEnabled;
+            if (field != null) field.InstanceTermsEnabled = !ownTerms;
+            if (cullMetres > 0)
+                stateCull = ForestCullDistance.Apply(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), cullMetres);
+            int moonVolumes = moon50 ? ApplyMoon50() : 0;
+            if (moon50 && moonVolumes == 0) return "moon50: no enabled volume overrides the shadow settings";
+            SetProxies(push);
+            string pushers = push == "push" ? ", raptor proxy walking 4 to 8 m ahead" : push == "sprint" ? ", a player sprinting 6 m/s across the view (24 m) 6 m ahead"
+                : push == "pair" ? ", the player at the camera and a raptor walking 16 to 20 m ahead" : push == "raptors3" ? ", three raptors walking 4 to 8, 10 to 14 and 16 to 20 m ahead" : "";
+            windDescription = $"{state}: {k}, motion vectors {passes}{(young ? " + young firs' every level" : "")}{pushers}" +
+                (field != null ? $", per-instance terms {(field.InstanceTermsEnabled ? $"from {field.Instances.Count} slots" : "in the vertex shader")}" : "") +
+                (stateCull != null ? $", forest culled at {Mathf.Max(ForestCullDistance.Minimum, cullMetres)} m ({stateCull.Count} LOD groups)" : "") +
+                (culledOff.Count > 0 ? ", the scene's night cull off" : "") +
+                (moon50 ? $", moon shadows 50 m / 3 cascades (N1's) on {moonVolumes} volume(s)" : "");
+            Debug.Log("Forest harness: wind " + windDescription);
+            return null;
+        }
+
+        // The pushers of a push state. A raptor: radius 0.45 m, 2.6 m long, band top 1.6 m, as the PlayMode tests' proxy; a player: radius
+        // 0.35 m, round, band top 1.8 m. No renderer and no collider: only their effect on the foliage (the field's stamps, the pressed
+        // instances and the pushed vertices) is measured.
+        void SetProxies(string mode)
+        {
+            if (mode != proxyMode)
+            {
+                foreach (MeasureProxy old in proxies)
+                    if (old.pusher != null) Destroy(old.pusher.gameObject);
+                proxies.Clear();
+                void Add(int kind, float centre, float phase)
+                {
+                    var holder = new GameObject("Forest Measure Proxy " + proxies.Count);
+                    DontDestroyOnLoad(holder);
+                    var pusher = holder.AddComponent<FoliagePusher>();
+                    if (kind == 0) pusher.Configure(0.45f, 2.6f, 1.6f);
+                    else pusher.Configure(0.35f, 0f, 1.8f, isPlayer: true);
+                    proxies.Add(new MeasureProxy { pusher = pusher, kind = kind, centre = centre, phase = phase });
+                }
+                switch (mode)
+                {
+                    case "push": Add(0, 6f, 0f); break;
+                    case "sprint": Add(1, 6f, 0f); break;
+                    case "pair": Add(2, 0f, 0f); Add(0, 18f, 0f); break;
+                    case "raptors3": Add(0, 6f, 0f); Add(0, 12f, 2.1f); Add(0, 18f, 4.2f); break;
+                }
+                proxyMode = mode;
+            }
+            foreach (MeasureProxy proxy in proxies)
+            {
+                proxy.phase = proxy.kind == 0 ? proxy.phase : 0f;
+                MoveProxy(proxy, 0f);
+                proxy.pusher.gameObject.SetActive(true);
+            }
+        }
+
+        // A raptor walks an ellipse on the ground in front of the camera, centre m ahead, 2 m either way along the view and 1 m to either
+        // side (about 9.7 m round), at 1.5 m/s, facing where it walks. A sprinting player runs 6 m/s back and forth along a 24 m line across
+        // the view, centre m ahead. A standing player stays under the camera.
+        void MoveProxy(MeasureProxy proxy, float deltaTime)
+        {
+            if (proxy.pusher == null || measureCamera == null) return;
+            Transform view = measureCamera.transform;
+            Vector3 forward = Vector3.ProjectOnPlane(view.forward, Vector3.up);
+            if (forward.sqrMagnitude < 1e-6f) forward = Vector3.forward;
+            forward.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 position, heading;
+            if (proxy.kind == 0)
+            {
+                const float depth = 2f, side = 1f, speed = 1.5f;
+                // The perimeter is about 2 pi sqrt((a^2 + b^2) / 2), so this angular speed walks it at the given speed.
+                proxy.phase += deltaTime * speed / Mathf.Sqrt(0.5f * (depth * depth + side * side));
+                Vector3 Point(float a) => view.position + forward * (proxy.centre + depth * Mathf.Cos(a)) + right * (side * Mathf.Sin(a));
+                position = Point(proxy.phase);
+                heading = Point(proxy.phase + 0.05f) - position;
+            }
+            else if (proxy.kind == 1)
+            {
+                const float halfLength = 12f, speed = 6f;
+                proxy.phase += deltaTime * speed;
+                float u = Mathf.PingPong(proxy.phase, 2f * halfLength) - halfLength;
+                bool outward = Mathf.Repeat(proxy.phase, 4f * halfLength) < 2f * halfLength;
+                position = view.position + forward * proxy.centre + right * u;
+                heading = outward ? right : -right;
+            }
+            else
+            {
+                position = view.position;
+                heading = forward;
+            }
+            Terrain terrain = Terrain.activeTerrain;
+            position.y = terrain != null ? terrain.SampleHeight(position) + terrain.transform.position.y : view.position.y - 1.65f;
+            heading.y = 0f;
+            proxy.pusher.transform.SetPositionAndRotation(position, heading.sqrMagnitude > 1e-8f ? Quaternion.LookRotation(heading.normalized, Vector3.up) : Quaternion.identity);
+        }
+
         void Update()
         {
+            foreach (MeasureProxy proxy in proxies)
+                if (proxy.pusher != null && proxy.pusher.gameObject.activeSelf)
+                    MoveProxy(proxy, Time.deltaTime);
+
             // Pacing: at most paceLag frames in flight. Before this frame's work begins, the GPU must have finished every frame
             // but the last paceLag - 1 (1: the previous frame, CPU and GPU serialised; 2: the one before it, one frame overlaps).
             while (paceLag > 0 && pacing.Count > paceLag - 1)
@@ -287,6 +541,35 @@ namespace Gamex.Diagnostics
             result.frameTimingFeatureEnabled = FrameTimingManager.IsFeatureEnabled();
             Debug.Log($"Forest harness: camera renders {camera.pixelWidth} x {camera.pixelHeight}; vsync {QualitySettings.vSyncCount}; frame timing {result.frameTimingFeatureEnabled}");
 
+            // W1: the wind controller of the active preset and the interaction field, centred on the measurement camera.
+            string windAB = Value("-forestMeasureWindAB", null), windSingle = Value("-forestMeasureWind", null);
+            bool windPaired = !string.IsNullOrEmpty(windAB);
+            measureCamera = camera;
+            if (windPaired || !string.IsNullOrEmpty(windSingle))
+            {
+                ForestWind wind = ForestWind.Active;
+                if (wind == null) { Fail("a wind state was asked for, but no ForestWind is enabled (Lighting/Preset_<name>)"); yield break; }
+                result.windController = wind.name;
+                result.windShipped = wind.Knobs.ToString();
+                result.windStates = windPaired ? windAB : windSingle;
+                int windMaterials = 0, passOn = 0;
+                foreach (Material material in Resources.FindObjectsOfTypeAll<Material>())
+                {
+                    if (!ForestWind.IsWindMaterial(material)) continue;
+                    windMaterials++;
+                    if (material.GetShaderPassEnabled("MotionVectors")) passOn++;
+                }
+                result.windMaterials = $"{windMaterials} wind materials loaded, motion vector pass on {passOn}";
+                Debug.Log($"Forest harness: wind {wind.name}, shipped knobs {result.windShipped}; {result.windMaterials}; states {result.windStates}");
+                if (!windPaired)
+                {
+                    string problem = ApplyWind(windSingle);
+                    if (problem != null) { Fail(problem); yield break; }
+                }
+            }
+            if (FoliageInteractionField.Active != null)
+                FoliageInteractionField.Active.Focus = camera.transform;
+
             // A first pass over every view, not recorded: shaders, pipeline states and streaming settle here.
             foreach (Transform viewpoint in viewpoints)
             {
@@ -303,8 +586,8 @@ namespace Gamex.Diagnostics
             var timings = new FrameTiming[1];
             try
             {
-                Light pairedLight = HasFlag("-forestMeasureTorchAB") && torch != null && torch.parent == camera.transform ? torch.GetComponent<Light>() : null;
-                string[] states = pairedLight != null ? new[] { "off", "on", "noshadow" } : new string[] { null };
+                Light pairedLight = !windPaired && HasFlag("-forestMeasureTorchAB") && torch != null && torch.parent == camera.transform ? torch.GetComponent<Light>() : null;
+                string[] states = windPaired ? windAB.Split(',') : pairedLight != null ? new[] { "off", "on", "noshadow" } : new string[] { null };
                 foreach (Transform viewpoint in viewpoints)
                 {
                     foreach (string state in states)
@@ -314,11 +597,17 @@ namespace Gamex.Diagnostics
                             pairedLight.enabled = state != "off";
                             pairedLight.shadows = state == "noshadow" ? LightShadows.None : LightShadows.Soft;
                         }
+                        if (windPaired)
+                        {
+                            string problem = ApplyWind(state);
+                            if (problem != null) { Fail(problem); yield break; }
+                        }
                         Cut(camera, viewpoint);
                         for (int i = 0; i < warmup; i++)
                             yield return null;
                         ViewResult view = null;
                         yield return Record(state == null ? viewpoint.name : viewpoint.name + "|" + state, viewpoint, frames, recorders, timings, r => view = r);
+                        view.wind = windDescription + (FoliageInteractionField.Active != null ? $"; {FoliageInteractionField.Active.Instances.PressedCount} instances pressed at the end" : "");
                         result.views.Add(view);
                         Debug.Log(string.Format(CultureInfo.InvariantCulture, "Forest harness: {0} median {1:0.00} ms p95 {2:0.00} ms (gpu median {3:0.00}, cpu median {4:0.00}, {5} timing frames), triangles {6}",
                             view.id, view.medianMs, view.p95Ms, view.gpuMedianMs, view.cpuMedianMs, view.frameTimingFrames, view.trianglesWorst));
@@ -329,6 +618,8 @@ namespace Gamex.Diagnostics
                     pairedLight.enabled = true;
                     pairedLight.shadows = LightShadows.Soft;
                 }
+                if (windPaired)
+                    ApplyWind("on");
 
                 if (HasFlag("-forestMeasureFloor"))
                 {

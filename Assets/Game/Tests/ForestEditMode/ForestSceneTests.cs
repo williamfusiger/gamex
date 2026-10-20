@@ -387,6 +387,271 @@ namespace Gamex.Tests.Forest
             }
         }
 
+        // ---- W1 I2: wind, foliage interaction and the thin-stem rule ----
+
+        static ForestPlan LoadPlan()
+        {
+            Assert.IsTrue(File.Exists(ForestPaths.PlanPath), $"{ForestPaths.PlanPath} is missing: rebuild the forest scene.");
+            ForestPlan plan = JsonUtility.FromJson<ForestPlan>(File.ReadAllText(ForestPaths.PlanPath));
+            Assert.IsTrue(plan != null && plan.placements.Length > 0, $"{ForestPaths.PlanPath} holds no placements.");
+            return plan;
+        }
+
+        // Scene instances by placement index (<prefabId>__<index> under Environment/Cells and Environment/Landmarks).
+        static Dictionary<int, Transform> Instances(Scene scene)
+        {
+            var instances = new Dictionary<int, Transform>();
+            GameObject environment = ForestTestSupport.RequireRoot(scene, "Environment");
+            foreach (string group in new[] { "Cells", "Landmarks" })
+            {
+                Transform root = environment.transform.Find(group);
+                if (root == null) continue;
+                foreach (Transform parent in root)
+                    foreach (Transform instance in parent)
+                    {
+                        int separator = instance.name.LastIndexOf("__", StringComparison.Ordinal);
+                        if (separator > 0 && int.TryParse(instance.name.Substring(separator + 2), NumberStyles.None, CultureInfo.InvariantCulture, out int index))
+                            instances[index] = instance;
+                    }
+            }
+            return instances;
+        }
+
+        [Test]
+        public void Scene_PassableStemsFollowTheRule()
+        {
+            // Spec 2.9 and 8.6: a young fir of instance scale at most PassableYoungFirMaxScale has its trunk capsule disabled, every
+            // other tree an enabled one, and the NavMesh (baked from the physics colliders) has a hole at exactly the solid ones.
+            Scene scene = ForestTestSupport.RequireForestScene();
+            ForestPlan plan = LoadPlan();
+            Dictionary<int, Transform> instances = Instances(scene);
+            float threshold = ForestLayout.PassableYoungFirMaxScale;
+            var problems = new List<string>();
+            int passable = 0, solid = 0;
+            float nearest = float.PositiveInfinity;
+            for (int i = 0; i < plan.placements.Length; i++)
+            {
+                ForestPlacement placement = plan.placements[i];
+                if (placement.cls != ForestClass.TallFir && placement.cls != ForestClass.YoungFir)
+                    continue;
+                if (placement.cls == ForestClass.YoungFir)
+                    nearest = Mathf.Min(nearest, Mathf.Abs(placement.scale - threshold));
+                if (!instances.TryGetValue(i, out Transform instance))
+                {
+                    problems.Add($"#{i} {placement.prefabId}: no instance in the scene");
+                    continue;
+                }
+                var capsule = instance.GetComponent<CapsuleCollider>();
+                bool shouldPass = placement.cls == ForestClass.YoungFir && placement.scale <= threshold;
+                if (capsule == null)
+                    problems.Add($"#{i} {instance.name}: no trunk capsule");
+                else if (capsule.enabled == shouldPass)
+                    problems.Add($"#{i} {instance.name} at scale {placement.scale:0.0000}: capsule {(capsule.enabled ? "enabled" : "disabled")}, expected {(shouldPass ? "disabled" : "enabled")}");
+                if (shouldPass) passable++; else solid++;
+            }
+            Debug.Log($"Forest passable stems: {passable} passable young firs, {solid} solid trees; the nearest young-fir scale lies {nearest:0.0000} from {threshold}.");
+            Assert.Greater(passable, 0, "No young fir is passable: the rule was not applied.");
+            // The shader recomputes the scale from the instance matrix and compares s <= threshold + 1e-3, so no fir may lie that close.
+            Assert.Greater(nearest, 2e-3f, $"A young fir's scale lies within 2e-3 of the threshold {threshold}: the CPU rule and the shader could disagree.");
+            ForestTestSupport.AssertNone(problems, "tree(s) whose capsule does not follow the thin-stem rule");
+
+            // NavMesh: rays across isolated stems (no other collider within 2.0 m), from 1.0 m on one side to 1.0 m on the other at four
+            // azimuths. A hole exists exactly where a capsule blocks: free for passable firs, blocked for solid ones (chosen among the
+            // young firs of scale 0.75 or more, whose capsule is the 0.12 m floor times at least 0.75).
+            var colliders = new List<(Vector2 xz, float clearance)>();
+            foreach (ForestPlacement placement in plan.placements)
+                if (placement.clearance > 0f)
+                    colliders.Add((new Vector2(placement.position.x, placement.position.z), placement.clearance));
+            const float isolation = 2.0f, reach = 1.0f;
+            const int wanted = 20;
+            int checkedPassable = 0, checkedSolid = 0;
+            var rays = new List<string>();
+            for (int i = 0; i < plan.placements.Length && (checkedPassable < wanted || checkedSolid < wanted); i++)
+            {
+                ForestPlacement placement = plan.placements[i];
+                if (placement.cls != ForestClass.YoungFir) continue;
+                bool isPassable = placement.scale <= threshold;
+                if (isPassable ? checkedPassable >= wanted : (checkedSolid >= wanted || placement.scale < 0.75f)) continue;
+                var stem = new Vector2(placement.position.x, placement.position.z);
+                if (ForestLayout.SignedDistanceToBoundary(stem) > -4f) continue;
+                bool isolated = true;
+                foreach ((Vector2 xz, float clearance) other in colliders)
+                {
+                    float d = (other.xz - stem).magnitude;
+                    if (d > 1e-3f && d - other.clearance < isolation) { isolated = false; break; }
+                }
+                if (!isolated) continue;
+
+                int free = 0, blocked = 0, unsampled = 0;
+                for (int a = 0; a < 4; a++)
+                {
+                    float angle = a * Mathf.PI / 4f;
+                    var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                    Vector2 fromXz = stem - direction * reach, toXz = stem + direction * reach;
+                    Terrain terrain = ForestTestSupport.RequireTerrain(scene);
+                    if (!NavMesh.SamplePosition(OnGround(terrain, fromXz), out NavMeshHit from, 0.3f, NavMesh.AllAreas)
+                        || !NavMesh.SamplePosition(OnGround(terrain, toXz), out NavMeshHit to, 0.3f, NavMesh.AllAreas))
+                    {
+                        unsampled++;
+                        continue;
+                    }
+                    if (NavMesh.Raycast(from.position, to.position, out _, NavMesh.AllAreas)) blocked++; else free++;
+                }
+                if (unsampled > 0)
+                {
+                    rays.Add($"#{i} {placement.prefabId} scale {placement.scale:0.000}: {unsampled} of 4 ray ends are off the NavMesh");
+                    continue;
+                }
+                if (isPassable)
+                {
+                    checkedPassable++;
+                    if (blocked > 0) rays.Add($"#{i} {placement.prefabId} scale {placement.scale:0.000} (passable): {blocked} of 4 rays across the stem are blocked");
+                }
+                else
+                {
+                    checkedSolid++;
+                    if (free > 0) rays.Add($"#{i} {placement.prefabId} scale {placement.scale:0.000} (solid): {free} of 4 rays across the stem are free");
+                }
+            }
+            Debug.Log($"Forest passable stems on the NavMesh: {checkedPassable} isolated passable and {checkedSolid} isolated solid young firs checked; {rays.Count} problem(s).");
+            Assert.GreaterOrEqual(checkedPassable, wanted, $"Only {checkedPassable} isolated passable young firs could be checked (wanted {wanted}): unable to compare.");
+            Assert.GreaterOrEqual(checkedSolid, wanted, $"Only {checkedSolid} isolated solid young firs could be checked (wanted {wanted}): unable to compare.");
+            ForestTestSupport.AssertNone(rays, "NavMesh ray(s) that disagree with the thin-stem rule");
+        }
+
+        [Test]
+        public void Scene_WindIsWired()
+        {
+            // Spec 8.6: one controller on each preset object with that preset's values (and, W1 I2b, its forest cull distance); one
+            // interaction field with its compute shader
+            // and density map; exactly one pusher on the forest player, on its child FoliagePusher, flagged as the player's.
+            Scene scene = ForestTestSupport.RequireForestScene();
+            var problems = new List<string>();
+            GameObject lighting = ForestTestSupport.RequireRoot(scene, "Lighting");
+            int presets = 0, enabledControllers = 0;
+            foreach (Transform child in lighting.transform)
+            {
+                if (!child.name.StartsWith("Preset_", StringComparison.Ordinal)) continue;
+                presets++;
+                string name = child.name.Substring("Preset_".Length);
+                ForestLightingPresets.Preset preset = ForestLightingPresets.Get(name);
+                ForestWind[] winds = child.GetComponents<ForestWind>();
+                if (winds.Length != 1) { problems.Add($"{child.name}: {winds.Length} ForestWind components, expected 1"); continue; }
+                ForestWind wind = winds[0];
+                if (preset == null) { problems.Add($"{child.name}: no such preset"); continue; }
+                void Same(string what, float actual, float expected)
+                {
+                    if (Mathf.Abs(actual - expected) > 1e-6f) problems.Add($"{child.name}: {what} {actual}, the preset says {expected}");
+                }
+                Same("bearing", wind.Bearing, preset.windBearing);
+                Same("calm", wind.Calm, preset.windCalm);
+                Same("gust peak", wind.GustPeak, preset.windGustPeak);
+                Same("gust wavelength", wind.GustWavelength, preset.windGustWavelength);
+                Same("gust speed", wind.GustSpeed, preset.windGustSpeed);
+                Same("gust seed", wind.GustSeed, ForestLightingPresets.WindSeed);
+                ForestWindKnobs knobs = wind.Knobs, shipped = ForestWindKnobs.Shipped;
+                if (!knobs.Equals(shipped)) problems.Add($"{child.name}: knobs {knobs}, shipped {shipped}");
+                if (child.gameObject.activeInHierarchy && wind.enabled) enabledControllers++;
+                // W1 I2b: the preset's forest cull distance on the same object (Night shorter than the kit's, never under 40 m).
+                ForestCullDistance[] culls = child.GetComponents<ForestCullDistance>();
+                if (culls.Length != 1) problems.Add($"{child.name}: {culls.Length} ForestCullDistance components, expected 1");
+                else
+                {
+                    Same("forest cull distance", culls[0].Distance, preset.forestCullDistance);
+                    if (culls[0].Distance > 0f && culls[0].Distance < ForestCullDistance.Minimum)
+                        problems.Add($"{child.name}: forest cull distance {culls[0].Distance} m, under the owner's {ForestCullDistance.Minimum} m");
+                }
+            }
+            if (presets == 0) problems.Add("Lighting has no preset objects");
+            if (enabledControllers != 1) problems.Add($"{enabledControllers} wind controllers are active, expected exactly the active preset's");
+
+            var fields = new List<FoliageInteractionField>();
+            var pushers = new List<FoliagePusher>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                fields.AddRange(root.GetComponentsInChildren<FoliageInteractionField>(true));
+                pushers.AddRange(root.GetComponentsInChildren<FoliagePusher>(true));
+            }
+            if (fields.Count != 1)
+                problems.Add($"{fields.Count} FoliageInteractionField components, expected 1");
+            else
+            {
+                if (fields[0].transform.parent != null || fields[0].name != ForestWindRig.FoliageRootName)
+                    problems.Add($"the interaction field sits on '{fields[0].name}', expected the scene root '{ForestWindRig.FoliageRootName}'");
+                var serialized = new SerializedObject(fields[0]);
+                var compute = serialized.FindProperty("stepShader").objectReferenceValue as ComputeShader;
+                if (compute == null || AssetDatabase.GetAssetPath(compute) != ForestWindRig.ComputePath)
+                    problems.Add($"the interaction field's compute shader is {(compute == null ? "missing" : AssetDatabase.GetAssetPath(compute))}, expected {ForestWindRig.ComputePath}");
+                else if (compute.FindKernel("Step") < 0 || compute.FindKernel("Gust") < 0)
+                    problems.Add("the compute shader lacks its Step or Gust kernel");
+                var density = serialized.FindProperty("densityMap").objectReferenceValue as FoliageDensityMap;
+                if (density == null || AssetDatabase.GetAssetPath(density) != ForestWindRig.DensityPath)
+                    problems.Add($"the interaction field's density map is {(density == null ? "missing" : AssetDatabase.GetAssetPath(density))}, expected {ForestWindRig.DensityPath}");
+            }
+
+            GameObject player = ForestTestSupport.RequireRoot(scene, "Player");
+            if (pushers.Count != 1)
+                problems.Add($"{pushers.Count} FoliagePusher components in the scene, expected the player's only");
+            foreach (FoliagePusher pusher in pushers)
+            {
+                if (pusher.transform.parent != player.transform || pusher.name != ForestWindRig.PusherChildName)
+                    problems.Add($"a FoliagePusher on '{AnimationUtility.CalculateTransformPath(pusher.transform, null)}', expected Player/{ForestWindRig.PusherChildName}");
+                if (!pusher.IsPlayer)
+                    problems.Add("the player's pusher is not flagged isPlayer");
+            }
+            ForestTestSupport.AssertNone(problems, "wiring problem(s)");
+        }
+
+        [Test]
+        public void FoliageDensity_MatchesThePlan()
+        {
+            // Spec 8.6: dense at fern patch centres, about zero on the trail's centre line, the mid layer dense next to young-fir stems.
+            ForestTestSupport.RequireForestScene();
+            ForestPlan plan = LoadPlan();
+            var map = AssetDatabase.LoadAssetAtPath<FoliageDensityMap>(ForestWindRig.DensityPath);
+            Assert.IsNotNull(map, $"{ForestWindRig.DensityPath} is missing: rebuild the forest scene.");
+            var problems = new List<string>();
+            int patches = 0, firs = 0;
+            float leastPatch = 1f, leastFir = 1f;
+            foreach (ForestPlacement placement in plan.placements)
+            {
+                var xz = new Vector2(placement.position.x, placement.position.z);
+                if (placement.cls == ForestClass.FernPatch)
+                {
+                    patches++;
+                    float d = map.Sample(xz, FoliageLayer.Low);
+                    leastPatch = Mathf.Min(leastPatch, d);
+                    if (d < 0.5f) problems.Add($"fern patch {placement.prefabId} at ({xz.x:0.0}, {xz.y:0.0}): low density {d:0.00}");
+                }
+                else if (placement.cls == ForestClass.YoungFir)
+                {
+                    firs++;
+                    float d = map.Sample(xz + new Vector2(0.15f, 0f), FoliageLayer.Mid);
+                    leastFir = Mathf.Min(leastFir, d);
+                    if (d < 0.5f) problems.Add($"young fir {placement.prefabId} at ({xz.x:0.0}, {xz.y:0.0}): mid density {d:0.00} 0.15 m from its stem");
+                }
+            }
+            // The trail's centre line, every 0.5 m: the planner keeps ferns and grass off the tread.
+            int samples = 0, dense = 0;
+            float worst = 0f;
+            float length = ForestLayout.SplineLength(ForestLayout.Trail);
+            int steps = Mathf.CeilToInt(length / 0.5f);
+            for (int step = 0; step <= steps; step++)
+            {
+                Vector2 point = ForestLayout.SampleSpline(ForestLayout.Trail, step / (float)steps);
+                float d = Mathf.Max(map.Sample(point, FoliageLayer.Low), map.Sample(point, FoliageLayer.Mid));
+                samples++;
+                worst = Mathf.Max(worst, d);
+                if (d > 0.1f) dense++;
+            }
+            Debug.Log($"Forest density map: {patches} fern patch centres, least low density {leastPatch:0.00}; {firs} young firs, least mid density beside the stem {leastFir:0.00}; " +
+                $"trail centre line {samples} samples, {dense} above 0.1, largest {worst:0.00}.");
+            Assert.Greater(patches, 0, "The plan has no fern patches to check the map against.");
+            if (dense > samples / 50)
+                problems.Add($"{dense} of {samples} samples of the trail's centre line have a density above 0.1 (largest {worst:0.00}); expected about 0");
+            ForestTestSupport.AssertNone(problems, "density problem(s)");
+        }
+
         [Test]
         public void PlayerRig_MatchesGreybox()
         {
@@ -397,11 +662,15 @@ namespace Gamex.Tests.Forest
             // The forest rig is a copy of the greybox rig, because the greybox builder may not be edited. This keeps the copy honest.
             // N1: the forest's player carries a torch the greybox's does not (the greybox does not change in that step). The torch,
             // CameraPivot/Flashlight and everything on it, is the one difference allowed; Flashlight_IsOnTheForestPlayer tests it.
+            // W1 I2 (spec 8.6, adapted as N1 did for the torch): the forest's player also parts foliage. Its pusher, the child
+            // FoliagePusher and everything on it, is the one more difference allowed; exactly one on the forest's player, none on the
+            // greybox's.
             Scene greybox = EditorSceneManager.OpenScene(GreyboxSceneBuilder.ScenePath, OpenSceneMode.Single);
             GameObject greyboxPlayer = ForestTestSupport.Root(greybox, "Player");
             Assert.IsNotNull(greyboxPlayer, "The greybox scene has no Player.");
             Assert.AreEqual(0, greyboxPlayer.GetComponentsInChildren<PlayerFlashlight>(true).Length, "The greybox's player has a torch; the greybox must not change in N1.");
-            List<string> expected = DescribeRig(greyboxPlayer, null);
+            Assert.AreEqual(0, greyboxPlayer.GetComponentsInChildren<FoliagePusher>(true).Length, "The greybox's player has a foliage pusher; the greybox must not change in W1.");
+            List<string> expected = DescribeRig(greyboxPlayer);
 
             Scene forest = EditorSceneManager.OpenScene(ForestPaths.ScenePath, OpenSceneMode.Single);
             GameObject forestPlayer = ForestTestSupport.RequireRoot(forest, "Player");
@@ -409,7 +678,13 @@ namespace Gamex.Tests.Forest
             Assert.AreEqual(1, torches.Length, "The forest's player must carry exactly one torch.");
             Assert.AreSame(forestPlayer.transform.Find("CameraPivot"), torches[0].transform.parent, "The torch must hang on the camera pivot.");
             Assert.AreEqual(0, torches[0].transform.childCount, "The torch's object must hold nothing else of the rig.");
-            List<string> actual = DescribeRig(forestPlayer, torches[0].transform);
+            FoliagePusher[] pushers = forestPlayer.GetComponentsInChildren<FoliagePusher>(true);
+            Assert.AreEqual(1, pushers.Length, "The forest's player must carry exactly one foliage pusher.");
+            Assert.AreSame(forestPlayer.transform, pushers[0].transform.parent, "The pusher must sit on its own child of the Player root.");
+            Assert.AreEqual(ForestWindRig.PusherChildName, pushers[0].name, "The pusher's child must be named FoliagePusher.");
+            Assert.AreEqual(0, pushers[0].transform.childCount, "The pusher's object must hold nothing else of the rig.");
+            Assert.AreEqual(1, pushers[0].GetComponents<Component>().Length - 1, "The pusher's object must hold the pusher only.");
+            List<string> actual = DescribeRig(forestPlayer, torches[0].transform, pushers[0].transform);
 
             var problems = new List<string>();
             foreach (string line in expected)
@@ -428,14 +703,14 @@ namespace Gamex.Tests.Forest
             Assert.AreEqual("MainCamera", forestPlayer.transform.Find("CameraPivot").tag, "The player camera must be the main camera.");
         }
 
-        // One line per fact about the rig, so two rigs can be compared as sets and every difference is named. The part
-        // <paramref name="leaveOut"/> (the forest's torch) and everything below it are not described.
-        static List<string> DescribeRig(GameObject player, Transform leaveOut)
+        // One line per fact about the rig, so two rigs can be compared as sets and every difference is named. The parts
+        // <paramref name="leaveOut"/> (the forest's torch and, since W1, its foliage pusher) and everything below them are not described.
+        static List<string> DescribeRig(GameObject player, params Transform[] leaveOut)
         {
             var lines = new List<string>();
             foreach (Transform part in player.GetComponentsInChildren<Transform>(true))
             {
-                if (leaveOut != null && part.IsChildOf(leaveOut))
+                if (Array.Exists(leaveOut, left => left != null && part.IsChildOf(left)))
                     continue;
                 string path = part == player.transform ? "Player" : "Player/" + AnimationUtility.CalculateTransformPath(part, player.transform);
                 lines.Add($"{path}: tag {part.tag}, layer {part.gameObject.layer}, active {part.gameObject.activeSelf}");

@@ -81,6 +81,15 @@ namespace Gamex.EditorTools
             ForestMeshTools.MeshData wood = ForestMeshTools.Merge(woodParts);
             int twigTriangles = ForestMeshTools.TriangleCount(twigs);
             int woodTriangles = ForestMeshTools.TriangleCount(wood);
+
+            // W1: the wind field, measured once on the source scan (spec 4.2); every level's colours come from it.
+            float scanTop = 0f;
+            foreach (Vector3 p in wood.positions) scanTop = Mathf.Max(scanTop, p.y);
+            foreach (Vector3 p in twigs.positions) scanTop = Mathf.Max(scanTop, p.y);
+            ForestWindData.TreeField windField = ForestWindData.MeasureTree(prefabId, wood, scanTop);
+            Debug.Log($"Forest kit: {prefabId} wind field: height {windField.height:0.000} m, " +
+                      (float.IsNegativeInfinity(windField.RootTop) ? "no root zone." : $"root zone below {windField.RootTop:0.00} m (G 0 there)."));
+            Material skirtMaterial = ForestMaterials.GetGround(ForestKitSpec.SkirtGroundLayer);
             if (Mathf.Abs(woodTriangles - tree.scanWood) > 0.02f * tree.scanWood)
                 Debug.LogWarning($"Forest kit: {prefabId} has {woodTriangles} wood triangles; ForestKitSpec expects {tree.scanWood}. Correct the tree table.");
 
@@ -198,7 +207,15 @@ namespace Gamex.EditorTools
                     gateFailures.Add(failure);
                 }
 
-                Mesh mesh = ForestPrefabs.SaveMesh(ForestMeshTools.ToMesh(level, prefabId + "__lod" + lod, true), ForestPrefabs.MeshPath(prefabId, "lod" + lod));
+                // W1: wind colours on the finished level (wood, root skirt, twigs, crown core), then the compact layout.
+                var parts = new ForestWindData.Part[materials.Count];
+                for (int i = 0; i < woodOfLevel.Count; i++)
+                    parts[i] = skirtMaterial != null && materials[i] == skirtMaterial ? ForestWindData.Part.Skirt : ForestWindData.Part.Wood;
+                parts[woodOfLevel.Count] = ForestWindData.Part.Foliage;
+                if (core != null) parts[woodOfLevel.Count + 1] = ForestWindData.Part.CrownCore;
+                Color32[] colours = ForestWindData.TreeColours(windField, level, parts);
+                Mesh mesh = ForestPrefabs.SaveMesh(ForestWindData.Compact(ForestMeshTools.ToMesh(level, prefabId + "__lod" + lod, true, colours)),
+                    ForestPrefabs.MeshPath(prefabId, "lod" + lod));
                 levels[lod] = new ForestPrefabs.Level { mesh = mesh, materials = materials.ToArray(), castShadows = true, untilDistance = distances[lod] };
 
                 ForestKitLodReport report = ForestPrefabs.LevelReport(mesh, distances[lod]);
@@ -226,11 +243,20 @@ namespace Gamex.EditorTools
                 // the same level draws a thinned mesh (ForestKitSpec.ScanShadowThinnedLevel) into the shadow maps instead.
                 var scanParts = new List<ForestMeshTools.MeshData>();
                 var scanMaterials = new List<Material>(woodMaterials);
-                for (int group = 0; group < woodMaterials.Count; group++) scanParts.Add(ForestMeshTools.Extract(wood, group));
+                var scanKinds = new List<ForestWindData.Part>();
+                for (int group = 0; group < woodMaterials.Count; group++)
+                {
+                    scanParts.Add(ForestMeshTools.Extract(wood, group));
+                    scanKinds.Add(skirtMaterial != null && woodMaterials[group] == skirtMaterial ? ForestWindData.Part.Skirt : ForestWindData.Part.Wood);
+                }
                 scanParts.Add(twigs);
                 scanMaterials.Add(twigMaterial);
+                scanKinds.Add(ForestWindData.Part.Foliage);
 
-                Mesh mesh = ForestPrefabs.SaveMesh(ForestMeshTools.ToMesh(ForestMeshTools.Merge(scanParts.ToArray()), prefabId + "__lod0", true),
+                // W1: the scan level reuses the baker's own twig pieces for the flutter anchors and phases.
+                ForestMeshTools.MeshData scanLevel = ForestMeshTools.Merge(scanParts.ToArray());
+                Color32[] scanColours = ForestWindData.TreeColours(windField, scanLevel, scanKinds.ToArray(), pieces);
+                Mesh mesh = ForestPrefabs.SaveMesh(ForestWindData.Compact(ForestMeshTools.ToMesh(scanLevel, prefabId + "__lod0", true, scanColours)),
                     ForestPrefabs.MeshPath(prefabId, "lod0"));
                 levels[0] = new ForestPrefabs.Level { mesh = mesh, materials = scanMaterials.ToArray(), castShadows = false, untilDistance = distances[0] };
                 reports[0] = ForestPrefabs.LevelReport(mesh, distances[0]);
